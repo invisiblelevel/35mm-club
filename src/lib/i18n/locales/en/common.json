@@ -181,7 +181,17 @@
     "reset_modal_description": "This action cannot be undone. All watched movies, TV shows, anime, achievements, XP and level will be permanently deleted.",
     "reset_confirm": "Yes, delete everything",
     "reset_cancel": "Cancel",
-    "reset_success": "Profile has been reset"
+    "reset_success": "Profile has been reset",
+	"section_backup": "Backup",
+    "export": "Export data",
+    "export_hint": "Save the entire library, achievements, diary and collections to a single JSON file.",
+    "import": "Import data",
+    "import_hint": "Load a previously saved JSON. Current data will be replaced.",
+    "export_done": "Export completed",
+    "export_error": "Export error: {error}",
+    "import_confirm": "Import will replace the entire current library and progress. Continue?",
+    "import_done": "Import completed. Reload the app.",
+    "import_error": "Import error: {error}"
   },
   "status": {
     "watching": "Watching",

@@ -2,16 +2,21 @@
   import { t, locale } from 'svelte-i18n';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { Settings as SettingsIcon, Globe, Sun, Moon, Monitor, KeyRound, AlertTriangle, RefreshCw } from 'lucide-svelte';
+  import { Settings as SettingsIcon, Globe, Sun, Moon, Monitor, KeyRound, AlertTriangle, RefreshCw, Download, Upload } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
+  import { save, open } from '@tauri-apps/plugin-dialog';
+  import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 
   let showResetModal = $state(false);
   let resetting = $state(false);
   let refreshingMeta = $state(false);
   let refreshingLang = $state(false);
+  let exporting = $state(false);
+  let importing = $state(false);
   let refreshMsg = $state('');
   let refreshError = $state('');
+  let backupMsg = $state('');
 
   let tmdbKey = $state(settings.tmdbKey);
 
@@ -68,6 +73,44 @@
       refreshError = $t('settings.refresh_error', { values: { error: String(e) } });
     } finally {
       refreshingLang = false;
+    }
+  }
+
+  async function exportData() {
+    exporting = true;
+    backupMsg = '';
+    try {
+      const json = await invoke<string>('export_data');
+      const path = await save({
+        defaultPath: `35mm-club-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (path) {
+        await writeTextFile(path, json);
+        backupMsg = $t('settings.export_done');
+      }
+    } catch (e) {
+      backupMsg = $t('settings.export_error', { values: { error: String(e) } });
+    } finally {
+      exporting = false;
+    }
+  }
+
+  async function importData() {
+    if (!confirm($t('settings.import_confirm'))) return;
+    importing = true;
+    backupMsg = '';
+    try {
+      const path = await open({ multiple: false, filters: [{ name: 'JSON', extensions: ['json'] }] });
+      if (!path) { importing = false; return; }
+      const json = await readTextFile(path as string);
+      await invoke('import_data', { jsonStr: json });
+      window.dispatchEvent(new CustomEvent('35mm-data-changed'));
+      backupMsg = $t('settings.import_done');
+    } catch (e) {
+      backupMsg = $t('settings.import_error', { values: { error: String(e) } });
+    } finally {
+      importing = false;
     }
   }
 
@@ -174,6 +217,41 @@
       {/if}
       {#if refreshError}
         <div class="p-3 rounded-lg bg-red-950/50 border border-red-800 text-sm text-red-200">{refreshError}</div>
+      {/if}
+    </div>
+  </section>
+
+  <!-- РЕЗЕРВНАЯ КОПИЯ -->
+  <section class="bg-surface border border-border rounded-xl p-6">
+    <h2 class="font-display text-lg font-semibold mb-4">{$t('settings.section_backup')}</h2>
+
+    <div class="space-y-4">
+      <div>
+        <button
+          onclick={exportData}
+          disabled={exporting}
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold transition-colors text-sm disabled:opacity-50"
+        >
+          <Download size={16} />
+          {exporting ? $t('common.loading') : $t('settings.export')}
+        </button>
+        <p class="text-xs text-zinc-500 mt-1">{$t('settings.export_hint')}</p>
+      </div>
+
+      <div>
+        <button
+          onclick={importData}
+          disabled={importing}
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold transition-colors text-sm disabled:opacity-50"
+        >
+          <Upload size={16} />
+          {importing ? $t('common.loading') : $t('settings.import')}
+        </button>
+        <p class="text-xs text-zinc-500 mt-1">{$t('settings.import_hint')}</p>
+      </div>
+
+      {#if backupMsg}
+        <div class="p-3 rounded-lg bg-emerald-950/50 border border-emerald-800 text-sm text-emerald-200">{backupMsg}</div>
       {/if}
     </div>
   </section>

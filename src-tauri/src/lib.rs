@@ -73,7 +73,9 @@ pub fn run() {
             diary_collections::get_collection_items,
             diary_collections::add_to_collection,
             diary_collections::remove_from_collection,
-            diary_collections::get_user_collections_for_title
+            diary_collections::get_user_collections_for_title,
+			commands::export_data,
+            commands::import_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

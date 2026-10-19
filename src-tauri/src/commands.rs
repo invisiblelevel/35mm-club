@@ -508,3 +508,269 @@ pub fn update_anime_progress(
 
     check_achievements_internal(&conn)
 }
+
+use serde_json::{json, Value};
+
+#[tauri::command]
+pub fn export_data(db: State<Database>) -> Result<String, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let mut data = serde_json::Map::new();
+
+    // 1. Профиль
+    let profile: Value = conn.query_row(
+        "SELECT username, level, xp, total_watch_minutes, created_at FROM user_profile WHERE id = 1",
+        [], |r| Ok(json!({
+            "username": r.get::<_, String>(0)?,
+            "level": r.get::<_, i64>(1)?,
+            "xp": r.get::<_, i64>(2)?,
+            "total_watch_minutes": r.get::<_, i64>(3)?,
+            "created_at": r.get::<_, String>(4)?,
+        }))
+    ).map_err(|e| e.to_string())?;
+    data.insert("profile".to_string(), profile);
+
+    // 2. Тайтлы (библиотека)
+    let mut stmt = conn.prepare(
+        "SELECT t.tmdb_id, t.anilist_id, t.type, t.title, t.original_title, t.year, t.poster_path,
+                t.overview, t.imdb_rating, t.runtime, t.language, t.episodes_total, t.anime_format,
+                t.anime_status, t.studio, ut.status, ut.rating, ut.anime_episodes_watched, ut.added_at
+         FROM titles t JOIN user_titles ut ON ut.title_id = t.id"
+    ).map_err(|e| e.to_string())?;
+    let titles: Vec<Value> = stmt.query_map([], |r| Ok(json!({
+        "tmdb_id": r.get::<_, Option<i64>>(0)?,
+        "anilist_id": r.get::<_, Option<i64>>(1)?,
+        "type": r.get::<_, String>(2)?,
+        "title": r.get::<_, String>(3)?,
+        "original_title": r.get::<_, Option<String>>(4)?,
+        "year": r.get::<_, Option<i64>>(5)?,
+        "poster_path": r.get::<_, Option<String>>(6)?,
+        "overview": r.get::<_, Option<String>>(7)?,
+        "imdb_rating": r.get::<_, Option<f64>>(8)?,
+        "runtime": r.get::<_, Option<i64>>(9)?,
+        "language": r.get::<_, Option<String>>(10)?,
+        "episodes_total": r.get::<_, Option<i64>>(11)?,
+        "anime_format": r.get::<_, Option<String>>(12)?,
+        "anime_status": r.get::<_, Option<String>>(13)?,
+        "studio": r.get::<_, Option<String>>(14)?,
+        "status": r.get::<_, String>(15)?,
+        "rating": r.get::<_, Option<f64>>(16)?,
+        "anime_episodes_watched": r.get::<_, i64>(17)?,
+        "added_at": r.get::<_, String>(18)?,
+    }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    data.insert("titles".to_string(), json!(titles));
+
+    // 3. Ачивки
+    let mut stmt = conn.prepare(
+        "SELECT a.code, ua.unlocked_at FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id"
+    ).map_err(|e| e.to_string())?;
+    let achievements: Vec<Value> = stmt.query_map([], |r| Ok(json!({
+        "code": r.get::<_, String>(0)?,
+        "unlocked_at": r.get::<_, String>(1)?,
+    }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    data.insert("achievements".to_string(), json!(achievements));
+
+    // 4. Дневник
+    let mut stmt = conn.prepare(
+        "SELECT we.watched_at, we.rating, we.notes, we.is_rewatch, t.tmdb_id
+         FROM watch_entries we
+         JOIN user_titles ut ON ut.id = we.user_title_id
+         JOIN titles t ON t.id = ut.title_id"
+    ).map_err(|e| e.to_string())?;
+    let diary: Vec<Value> = stmt.query_map([], |r| Ok(json!({
+        "watched_at": r.get::<_, String>(0)?,
+        "rating": r.get::<_, Option<f64>>(1)?,
+        "notes": r.get::<_, Option<String>>(2)?,
+        "is_rewatch": r.get::<_, i64>(3)? != 0,
+        "tmdb_id": r.get::<_, Option<i64>>(4)?,
+    }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    data.insert("diary".to_string(), json!(diary));
+
+    // 5. Коллекции
+    let mut stmt = conn.prepare("SELECT id, name, description FROM collections").map_err(|e| e.to_string())?;
+    let collections_raw: Vec<(i64, String, Option<String>)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    let mut collections: Vec<Value> = Vec::new();
+    for (id, name, desc) in collections_raw {
+        let mut stmt = conn.prepare(
+            "SELECT t.tmdb_id FROM collection_items ci
+             JOIN user_titles ut ON ut.id = ci.user_title_id
+             JOIN titles t ON t.id = ut.title_id
+             WHERE ci.collection_id = ?1"
+        ).map_err(|e| e.to_string())?;
+        let tmdb_ids: Vec<i64> = stmt.query_map([id], |r| r.get::<_, Option<i64>>(0))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok().flatten())
+            .collect();
+        collections.push(json!({
+            "name": name,
+            "description": desc,
+            "tmdb_ids": tmdb_ids,
+        }));
+    }
+    data.insert("collections".to_string(), json!(collections));
+
+    // Финальный JSON
+    let json_str = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    Ok(json_str)
+}
+
+#[tauri::command]
+pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> {
+    let data: Value = serde_json::from_str(&json_str).map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    // Очищаем все пользовательские данные (но не справочник ачивок!)
+    conn.execute_batch(
+        "DELETE FROM user_episodes;
+         DELETE FROM episodes;
+         DELETE FROM seasons;
+         DELETE FROM user_showcase;
+         DELETE FROM user_achievements;
+         DELETE FROM user_ribbons;
+         DELETE FROM watch_entries;
+         DELETE FROM collection_items;
+         DELETE FROM collections;
+         DELETE FROM user_titles;
+         DELETE FROM titles;
+         UPDATE user_profile SET xp = 0, level = 1, total_watch_minutes = 0 WHERE id = 1;"
+    ).map_err(|e| e.to_string())?;
+
+    // 1. Профиль
+    if let Some(profile) = data.get("profile") {
+        conn.execute(
+            "UPDATE user_profile SET username = ?1, xp = ?2, level = ?3, total_watch_minutes = ?4 WHERE id = 1",
+            rusqlite::params![
+                profile.get("username").and_then(|v| v.as_str()).unwrap_or("Киноман"),
+                profile.get("xp").and_then(|v| v.as_i64()).unwrap_or(0),
+                profile.get("level").and_then(|v| v.as_i64()).unwrap_or(1),
+                profile.get("total_watch_minutes").and_then(|v| v.as_i64()).unwrap_or(0),
+            ]
+        ).map_err(|e| e.to_string())?;
+    }
+
+    // 2. Тайтлы
+    let mut title_map: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+    if let Some(titles) = data.get("titles").and_then(|v| v.as_array()) {
+        for t in titles {
+            let tmdb_id = t.get("tmdb_id").and_then(|v| v.as_i64());
+            if tmdb_id.is_none() { continue; }
+            let tmdb_id = tmdb_id.unwrap();
+
+            let existing: Option<i64> = conn.query_row(
+                "SELECT id FROM titles WHERE tmdb_id = ?1 AND type = ?2",
+                rusqlite::params![tmdb_id, t.get("type").and_then(|v| v.as_str()).unwrap_or("movie")],
+                |r| r.get(0)
+            ).ok();
+
+            let title_id = match existing {
+                Some(id) => id,
+                None => {
+                    conn.execute(
+                        "INSERT INTO titles (tmdb_id, anilist_id, type, title, original_title, year, poster_path, overview, imdb_rating, runtime, language, episodes_total, anime_format, anime_status, studio)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                        rusqlite::params![
+                            tmdb_id,
+                            t.get("anilist_id").and_then(|v| v.as_i64()),
+                            t.get("type").and_then(|v| v.as_str()).unwrap_or("movie"),
+                            t.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown"),
+                            t.get("original_title").and_then(|v| v.as_str()),
+                            t.get("year").and_then(|v| v.as_i64()),
+                            t.get("poster_path").and_then(|v| v.as_str()),
+                            t.get("overview").and_then(|v| v.as_str()),
+                            t.get("imdb_rating").and_then(|v| v.as_f64()),
+                            t.get("runtime").and_then(|v| v.as_i64()),
+                            t.get("language").and_then(|v| v.as_str()),
+                            t.get("episodes_total").and_then(|v| v.as_i64()),
+                            t.get("anime_format").and_then(|v| v.as_str()),
+                            t.get("anime_status").and_then(|v| v.as_str()),
+                            t.get("studio").and_then(|v| v.as_str()),
+                        ]
+                    ).map_err(|e| e.to_string())?;
+                    conn.last_insert_rowid()
+                }
+            };
+            title_map.insert(tmdb_id, title_id);
+
+            conn.execute(
+                "INSERT INTO user_titles (title_id, status, rating, anime_episodes_watched, added_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![
+                    title_id,
+                    t.get("status").and_then(|v| v.as_str()).unwrap_or("planned"),
+                    t.get("rating").and_then(|v| v.as_f64()),
+                    t.get("anime_episodes_watched").and_then(|v| v.as_i64()).unwrap_or(0),
+                    t.get("added_at").and_then(|v| v.as_str()).unwrap_or("2026-01-01 00:00:00"),
+                ]
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    // 3. Ачивки
+    if let Some(achievements) = data.get("achievements").and_then(|v| v.as_array()) {
+        for a in achievements {
+            if let Some(code) = a.get("code").and_then(|v| v.as_str()) {
+                if let Ok(ach_id) = conn.query_row("SELECT id FROM achievements WHERE code = ?1", [code], |r| r.get::<_, i64>(0)) {
+                    conn.execute(
+                        "INSERT OR IGNORE INTO user_achievements (achievement_id, unlocked_at) VALUES (?1, ?2)",
+                        rusqlite::params![ach_id, a.get("unlocked_at").and_then(|v| v.as_str()).unwrap_or("2026-01-01 00:00:00")]
+                    ).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    }
+
+    // 4. Дневник
+    if let Some(diary) = data.get("diary").and_then(|v| v.as_array()) {
+        for d in diary {
+            if let Some(tmdb_id) = d.get("tmdb_id").and_then(|v| v.as_i64()) {
+                if let Some(&title_id) = title_map.get(&tmdb_id) {
+                    let ut_id: Option<i64> = conn.query_row("SELECT id FROM user_titles WHERE title_id = ?1", [title_id], |r| r.get(0)).ok();
+                    if let Some(ut_id) = ut_id {
+                        conn.execute(
+                            "INSERT INTO watch_entries (user_title_id, watched_at, rating, notes, is_rewatch) VALUES (?1, ?2, ?3, ?4, ?5)",
+                            rusqlite::params![
+                                ut_id,
+                                d.get("watched_at").and_then(|v| v.as_str()).unwrap_or("2026-01-01 00:00:00"),
+                                d.get("rating").and_then(|v| v.as_f64()),
+                                d.get("notes").and_then(|v| v.as_str()),
+                                d.get("is_rewatch").and_then(|v| v.as_bool()).unwrap_or(false) as i64,
+                            ]
+                        ).map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Коллекции
+    if let Some(collections) = data.get("collections").and_then(|v| v.as_array()) {
+        for c in collections {
+            if let Some(name) = c.get("name").and_then(|v| v.as_str()) {
+                conn.execute(
+                    "INSERT INTO collections (name, description) VALUES (?1, ?2)",
+                    rusqlite::params![name, c.get("description").and_then(|v| v.as_str())]
+                ).map_err(|e| e.to_string())?;
+                let coll_id = conn.last_insert_rowid();
+                if let Some(tmdb_ids) = c.get("tmdb_ids").and_then(|v| v.as_array()) {
+                    for tmdb_val in tmdb_ids {
+                        if let Some(tmdb_id) = tmdb_val.as_i64() {
+                            if let Some(&title_id) = title_map.get(&tmdb_id) {
+                                if let Ok(ut_id) = conn.query_row("SELECT id FROM user_titles WHERE title_id = ?1", [title_id], |r| r.get::<_, i64>(0)) {
+                                    conn.execute(
+                                        "INSERT OR IGNORE INTO collection_items (collection_id, user_title_id) VALUES (?1, ?2)",
+                                        rusqlite::params![coll_id, ut_id]
+                                    ).map_err(|e| e.to_string())?;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}

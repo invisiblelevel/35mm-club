@@ -181,7 +181,17 @@
     "reset_modal_description": "此操作无法撤销。所有观看的电影、剧集、动漫、成就、XP 和等级将被永久删除。",
     "reset_confirm": "是的，删除全部",
     "reset_cancel": "取消",
-    "reset_success": "个人资料已重置"
+    "reset_success": "个人资料已重置",
+	"section_backup": "备份",
+    "export": "导出数据",
+    "export_hint": "将整个媒体库、成就、日记和收藏集保存为单个 JSON 文件。",
+    "import": "导入数据",
+    "import_hint": "加载之前保存的 JSON 文件。当前数据将被替换。",
+    "export_done": "导出完成",
+    "export_error": "导出错误：{error}",
+    "import_confirm": "导入将替换当前整个媒体库和进度。是否继续？",
+    "import_done": "导入完成。请重新加载应用。",
+    "import_error": "导入错误：{error}"
   },
   "status": {
     "watching": "在看",
