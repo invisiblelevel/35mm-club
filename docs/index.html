@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>35mm Club — Local-first movie, TV & anime tracker</title>
+  <meta name="description" content="A local-first desktop tracker for movies, TV shows and anime with achievements, XP, ranks and a military-style ribbon rack. All data on your computer." />
+  <meta property="og:title" content="35mm Club" />
+  <meta property="og:description" content="Local-first movie, TV & anime tracker with achievements." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #151515;
+      --surface-2: #1c1c1c;
+      --border: #2a2a2a;
+      --gold: #ff9000;
+      --gold-light: #ffb733;
+      --gold-dark: #cc7300;
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ==== Background glow ==== */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1200px;
+      height: 1200px;
+      background: radial-gradient(circle, rgba(255, 144, 0, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ==== NAV ==== */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 10, 10, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo span { color: var(--gold); }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover { color: var(--gold); }
+
+    @media (max-width: 640px) {
+      .nav-links a:not(.btn-nav) { display: none; }
+    }
+
+    /* ==== BUTTONS ==== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: var(--gold-light);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(255, 144, 0, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .btn-nav {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    /* ==== HERO ==== */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(255, 144, 0, 0.1);
+      border: 1px solid rgba(255, 144, 0, 0.3);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--gold);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 7vw, 72px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(180deg, #fff 0%, #999 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 19px;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .hero-meta {
+      font-size: 13px;
+      color: var(--text-dim);
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hero-meta .check { color: var(--gold); }
+
+    /* ==== SCREENSHOT ==== */
+    .screenshot {
+      margin-top: 64px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+
+    .screenshot img {
+      width: 100%;
+      display: block;
+    }
+
+    .screenshot-placeholder {
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 14px;
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    }
+
+    /* ==== SECTION ==== */
+    section { padding: 100px 0; position: relative; }
+
+    .section-header {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 64px;
+    }
+
+    .section-eyebrow {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    .section-header h2 {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 17px;
+    }
+
+    /* ==== FEATURES GRID ==== */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255, 144, 0, 0.06) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature:hover {
+      border-color: rgba(255, 144, 0, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .feature:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(255, 144, 0, 0.1);
+      border: 1px solid rgba(255, 144, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .feature h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .feature p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ==== STATS BAR ==== */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 24px;
+      padding: 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 64px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: -1.5px;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ==== CTA ==== */
+    .cta {
+      text-align: center;
+      padding: 80px 32px;
+      background: linear-gradient(135deg, rgba(255, 144, 0, 0.1) 0%, rgba(255, 144, 0, 0.02) 100%);
+      border: 1px solid rgba(255, 144, 0, 0.2);
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255, 144, 0, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -1.2px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .cta p {
+      color: var(--text-muted);
+      font-size: 17px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .cta .btn { position: relative; }
+
+    /* ==== FOOTER ==== */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      color: var(--text-dim);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    footer a:hover { color: var(--gold); }
+
+    footer .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding: 60px 0 40px; }
+      section { padding: 60px 0; }
+      .stats { padding: 24px; }
+      .cta { padding: 48px 24px; }
+    }
+
+    /* ==== REVEAL ANIMATION ==== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="container">
+      <a href="#" class="logo">35<span>mm</span> Club</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="https://github.com/invisiblelevel/35mm-club" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/invisiblelevel/35mm-club/releases/latest" class="btn btn-primary btn-nav" target="_blank" rel="noopener">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        v1.0.0 — now available
+      </div>
+      <h1>
+        Your cinema.<br>
+        <span class="accent">Your rules.</span>
+      </h1>
+      <p>
+        A local-first desktop tracker for movies, TV shows and anime with achievements, XP, ranks and a military-style ribbon rack. All data lives on your computer.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/invisiblelevel/35mm-club/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
+          ↓ Download for Windows
+        </a>
+        <a href="https://github.com/invisiblelevel/35mm-club" class="btn btn-secondary" target="_blank" rel="noopener">
+          View on GitHub
+        </a>
+      </div>
+      <div class="hero-meta">
+        <span><span class="check">✓</span> 100% offline</span>
+        <span><span class="check">✓</span> No accounts</span>
+        <span><span class="check">✓</span> MIT license</span>
+      </div>
+
+      <!-- SCREENSHOT -->
+      <div class="screenshot">
+        <!-- Замени на реальный скриншот: положи файл screenshot.png в docs/ -->
+        <img src="screenshot.png" alt="35mm Club interface" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        <div class="screenshot-placeholder" style="display: none;">
+          📸 Add screenshot.png to the docs folder
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-eyebrow">Features</div>
+        <h2>Everything you need. Nothing you don't.</h2>
+        <p>Track your library, earn achievements, level up — all without the cloud.</p>
+      </div>
+
+      <div class="features">
+        <div class="feature reveal">
+          <div class="feature-icon">🎬</div>
+          <h3>Movies, TV & anime</h3>
+          <p>Three content types in one place. Powered by TMDB, Shikimori and AniList for metadata.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">📺</div>
+          <h3>Episode tracker</h3>
+          <p>Seasons, episodes and watch progress — with automatic completion detection for anime.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">🏆</div>
+          <h3>90+ achievements</h3>
+          <p>From Common to Legendary. Earn them for watching, rating, completing franchises and more.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">⭐</div>
+          <h3>Half-star ratings</h3>
+          <p>Rate movies, TV shows and anime with precision — 0.5 to 10.0 in half-star increments.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">🎖️</div>
+          <h3>Ranks & ribbon rack</h3>
+          <p>10 military ranks from Private to General. The ribbon rack unlocks at level 20 and grows with you.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">📔</div>
+          <h3>Diary & collections</h3>
+          <p>Keep watch history with dates and notes. Build custom collections with poster previews.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">💾</div>
+          <h3>Backup & restore</h3>
+          <p>Export your entire library, achievements and diary to a single JSON file. Restore anywhere.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">🌍</div>
+          <h3>Three languages</h3>
+          <p>English, Russian and Chinese with system auto-detection. Dark and light themes included.</p>
+        </div>
+      </div>
+
+      <div class="stats reveal">
+        <div class="stat">
+          <div class="stat-value">90+</div>
+          <div class="stat-label">Achievements</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">10</div>
+          <div class="stat-label">Military ranks</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Languages</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">0</div>
+          <div class="stat-label">Clouds</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-eyebrow">How it works</div>
+        <h2>Up and running in 30 seconds.</h2>
+        <p>No accounts. No subscriptions. No cloud.</p>
+      </div>
+
+      <div class="features">
+        <div class="feature reveal">
+          <div class="feature-icon">⬇️</div>
+          <h3>1. Download</h3>
+          <p>Grab the Windows installer from GitHub Releases. It's a single .exe — everything else is bundled.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">▶️</div>
+          <h3>2. Install</h3>
+          <p>Run the installer, choose your language (English, Russian or Chinese), and you're done.</p>
+        </div>
+
+        <div class="feature reveal">
+          <div class="feature-icon">🎉</div>
+          <h3>3. Start tracking</h3>
+          <p>Add your first movie or anime. Earn XP, unlock achievements, climb the ranks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section>
+    <div class="container">
+      <div class="cta reveal">
+        <h2>Ready to build your library?</h2>
+        <p>Free, open source, and yours forever.</p>
+        <a href="https://github.com/invisiblelevel/35mm-club/releases/latest" class="btn btn-primary" target="_blank" rel="noopener">
+          ↓ Download for Windows
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div>© 2026 INV.LVL · MIT License</div>
+        <div>
+          <a href="https://github.com/invisiblelevel/35mm-club" target="_blank" rel="noopener">GitHub</a>
+          &nbsp;·&nbsp;
+          <a href="https://github.com/invisiblelevel/35mm-club/issues" target="_blank" rel="noopener">Issues</a>
+          &nbsp;·&nbsp;
+          <a href="https://github.com/invisiblelevel/35mm-club/releases" target="_blank" rel="noopener">Releases</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Reveal on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
