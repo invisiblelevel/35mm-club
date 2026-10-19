@@ -7,6 +7,7 @@
   import PageHeader from '$lib/components/PageHeader.svelte';
   import { save, open } from '@tauri-apps/plugin-dialog';
   import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
+  import { openUrl } from '@tauri-apps/plugin-opener';
 
   let showResetModal = $state(false);
   let resetting = $state(false);
@@ -179,7 +180,14 @@
         class="w-full px-3 py-2 bg-ink-light border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none"
       />
       <p class="text-xs text-zinc-500">{$t('settings.tmdb_key_hint')}</p>
-      <button onclick={saveTmdbKey} class="px-4 py-2 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg text-sm transition-colors">{$t('settings.save')}</button>
+      <p class="text-xs text-zinc-500">{$t('settings.tmdb_key_tooltip')}</p>
+      <div class="flex items-center gap-3">
+        <button onclick={saveTmdbKey} class="px-4 py-2 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg text-sm transition-colors">{$t('settings.save')}</button>
+        <button
+          onclick={() => openUrl('https://www.themoviedb.org/settings/api')}
+          class="text-xs text-gold hover:text-gold-light underline transition-colors"
+        >{$t('settings.tmdb_key_get_link')}</button>
+      </div>
     </div>
   </section>
 

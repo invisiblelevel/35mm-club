@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_TMDB_KEY: &str = "ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА";
+const DEFAULT_TMDB_KEY: &str = "c7cf9c4e09dc02c786f8fb5669c44a01";
 const TMDB_BASE: &str = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE: &str = "https://image.tmdb.org/t/p/w500";
 
