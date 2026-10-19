@@ -1,0 +1,1 @@
+UPDATE achievements SET condition_type = 'collection_id', condition_value = 119092 WHERE code = 'sharknado_marathon';

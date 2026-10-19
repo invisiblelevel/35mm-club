@@ -1,0 +1,48 @@
+.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+# === Node / SvelteKit ===
+node_modules/
+.svelte-kit/
+build/
+dist/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# === Tauri / Rust ===
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock
+
+# === IDE / OS ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Project-specific ===
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+35mm_club.db
+
+# === Local env ===
+local/
+tmp/
+*.log

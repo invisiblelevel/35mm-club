@@ -1,0 +1,265 @@
+{
+  "ach": {
+    "first_step": {
+      "title": "First Step",
+      "desc": "You added your first movie, TV show, or anime. Welcome to the club, rookie."
+    },
+    "movies_10": {
+      "title": "The Ten",
+      "desc": "10 films in your library. Not bad for a start."
+    },
+    "movies_100": {
+      "title": "The Hundred",
+      "desc": "100 films. You're officially a cinephile."
+    },
+    "tv_10": {
+      "title": "TV Regular",
+      "desc": "10 TV shows in your library. You know a thing or two about long stories."
+    },
+    "anime_10": {
+      "title": "Beginning Otaku",
+      "desc": "10 anime in your library. Welcome to the club."
+    },
+    "not_the_bees": {
+      "title": "\"Not the Bees!\"",
+      "desc": "Witness the legendary masterpiece with Nicolas Cage in a bear suit, beating up women in the woods and screaming about bees in his eyes like it's the performance of a lifetime."
+    },
+    "nevsky_absolute": {
+      "title": "\"Absolute Cinema\"",
+      "desc": "Watch a film starring Hollywood's greatest Russian hero, where the entire budget went to close-up walking, leather jackets, chicken and rice, and an endless shootout where no one ever gets hit. Wot a wot!"
+    },
+    "room_wiseau": {
+      "title": "\"Oh, hi Mark!\"",
+      "desc": "Touch the greatest worst film in human history, throw a spoon at the screen, listen to dialogue like \"I did not hit her, it's not true, oh hi Mark\" and realize this is an absolute genius masterpiece."
+    },
+    "green_elephant": {
+      "title": "\"Sweet Bread\"",
+      "desc": "Endure the main arthouse of the domestic underground, hear the story about going to work, don't stain the guardhouse and heroically don't delete the app out of horror."
+    },
+    "morbius_time": {
+      "title": "\"It's Morbin' Time!\"",
+      "desc": "Voluntarily add a film that became such a meme failure that the studio re-released it in theaters twice — and both times crashed at the box office."
+    },
+    "cats_horrifying": {
+      "title": "\"Digital Nightmare\"",
+      "desc": "Endure a two-hour trip with humanoid cats rendered in terrible CGI and try to unsee the flapping cartoon cat anuses the studio had to censor on release."
+    },
+    "fast_family": {
+      "title": "\"For Family and a 1/4 Mile\"",
+      "desc": "Go with tears in your eyes from stealing stereos in beat-up Hondas to flying a muscle car into outer space for the Main Value — Family and a cold Corona."
+    },
+    "nolan_time": {
+      "title": "\"Nolan Approves\"",
+      "desc": "Close the entire filmography of the Great Genius, break your brain three times on time games, go deaf from Hans Zimmer's soundtrack and proudly pretend you understood everything without YouTube explainers."
+    },
+    "sharknado_marathon": {
+      "title": "\"Shark Meteorologist\"",
+      "desc": "Survive all six parts of the meaningless hell from The Asylum, where chainsaws and sharks fly in tornadoes eating people mid-air, and the graphics look like they were rendered in a microwave."
+    },
+    "marvel_fatigue": {
+      "title": "\"Conveyor Belt Victim\"",
+      "desc": "Watch over 30 colorful films about men in latex, sit through 100 hours for three-second post-credit scenes and still sincerely hope the next phase will fix everything."
+    },
+    "tarantino_feet": {
+      "title": "\"Connoisseur of Female Feet\"",
+      "desc": "Close Tarantino's entire filmography, memorize tons of profanity and liters of fake blood, and count every close-up of bare female feet in 4K."
+    },
+    "cage_fever": {
+      "title": "\"Cage Overload\"",
+      "desc": "Collect 10+ Nicolas Cage films — from absolute Oscar-level masterpieces to pure trash made for a bag of chips just to pay off debts on a purchased castle."
+    },
+    "masochist_trash": {
+      "title": "\"Masochist-Esthetic\"",
+      "desc": "Find absolute garbage in the deepest cellars of cinema that makes the whole internet sick, shed a tear of delight and give it 10/10 marked \"misunderstood masterpiece ahead of its time\"."
+    },
+    "speedrunner": {
+      "title": "\"Binge Maniac\"",
+      "desc": "Close 5 films in one day. Eyes leaking onto the keyboard, ass flat, the real world outside long lost its meaning. Planning to go outside at all?"
+    },
+    "night_owl": {
+      "title": "\"Midnight Screening\"",
+      "desc": "Finish a thriller at 4 AM when you have work at 8, and sit in the dark with red eyes pondering the frailty of existence."
+    },
+    "marathon_endurance": {
+      "title": "\"Ass of Steel\"",
+      "desc": "Endure a three-hour cinema monster in one sitting while your glutes fuse with the chair and your bladder passes the ultimate endurance test."
+    },
+    "ancient_fossil": {
+      "title": "\"Cinema Archaeologist\"",
+      "desc": "Dig up and watch a silent or black-and-white film made before your parents or even grandma were born. A pure museum exhibit!"
+    },
+    "short_and_sweet": {
+      "title": "\"Micro-Screening\"",
+      "desc": "Watch a feature film shorter than the drawn-out intros in episodes of shows like Stranger Things. Quick, cheap, brutal!"
+    },
+    "uwe_boll_survivor": {
+      "title": "\"Uwe Boll Survivor\"",
+      "desc": "Heroically endure 3 video game adaptations from the maestro who made films purely for German tax breaks and challenged critics to a real boxing ring."
+    },
+    "snob_critic": {
+      "title": "\"Merciless Critic\"",
+      "desc": "Give a 1/10 rating to 5 films in a row. No mercy for directors, writers and actors — today a real executioner rules the cinema!"
+    },
+    "potterhead": {
+      "title": "\"Head Gryffindor\"",
+      "desc": "Watch all 8 films about the boy who lived, forgive the filmmakers for cutting Peeves, learn all the spells and still wait for your Hogwarts letter after 30 years."
+    },
+    "lotr_ringbearer": {
+      "title": "\"Ring Bearer\"",
+      "desc": "Carry the ring from the Shire to Orodruin with Frodo and Sam, endure 12 hours of runtime and realize that eagles are the most useless birds in the universe since they couldn't just fly there."
+    },
+    "matrix_redpill": {
+      "title": "\"Red Pill\"",
+      "desc": "Go from the great first film in a leather coat to the fourth part and realize that Agent Smith was the only normal dude in this digital madness."
+    },
+    "saw_game": {
+      "title": "\"Jigsaw's Victim\"",
+      "desc": "Survive all of Jigsaw's traps, hear \"I want to play a game\" 100 times and stop being scared of blood because in the later parts it's just cranberry syrup."
+    },
+    "starwars_boomer": {
+      "title": "\"Came, Saw, Turned to the Dark Side\"",
+      "desc": "Watch all three trilogies, survive Anakin's fall, get through the Disney episodes, cry over the franchise's fate and realize that Jar Jar Binks is the true Sith Lord."
+    },
+    "shrek_swamp": {
+      "title": "\"This Is My Swamp!\"",
+      "desc": "Spend a weekend in the swamp with a green ogre and a talking donkey, memorize the entire Smash Mouth — All Star soundtrack and demand \"Shrek 5\" right now!"
+    },
+    "alien_chestburster": {
+      "title": "\"Facehugger Allergy\"",
+      "desc": "Watch all of Ripley's adventures and the traitorous androids, learn to check the ventilation before sleep and never touch suspicious eggs in the basement again."
+    },
+    "terminator_fates": {
+      "title": "\"I Need Your Motorcycle\"",
+      "desc": "Rewatch the perfect first two parts, then heroically push through a bunch of crappy sequels with liquid robots and an aged Arnie. Hasta la vista, backend!"
+    },
+    "pirates_rum": {
+      "title": "\"Where's the Rum?!\"",
+      "desc": "Sail under Captain Jack Sparrow's flag through all 5 films, memorize Hans Zimmer's main theme and realize that drinking rum at 10 AM is a perfectly normal maritime tradition."
+    },
+    "transformers_bayhem": {
+      "title": "\"Michael Bay Epilepsy\"",
+      "desc": "Endure 15 hours of endless explosions, spinning metal, US flags at sunset and Megan Fox screaming. Your ophthalmologist is crying with you."
+    },
+    "john_wick_pencil": {
+      "title": "\"Pencil Killer\"",
+      "desc": "Count all 500+ corpses shot by Keanu Reeves for revenge for a dog and a car, and remember: a simple office pencil is a weapon of mass destruction."
+    },
+    "resident_evil_milla": {
+      "title": "\"Milla Jovovich's Victim\"",
+      "desc": "Watch 6 parts in a row as Milla Jovovich in a beautiful latex outfit roundhouse kicks zombies and dogs in the face while the plot finally turns into an incoherent trip by director Paul W. S. Anderson."
+    },
+    "twilight_vampire": {
+      "title": "\"Team Edward\"",
+      "desc": "Voluntarily swallow all parts of the love triangle between an emo vampire, pale Bella and a buff werewolf who constantly walks around without a shirt. But he sparkles in the sun!"
+    },
+    "final_destination": {
+      "title": "\"Fear of Logs on the Highway\"",
+      "desc": "Watch all the elaborate ways Death takes teenagers, get a lifelong phobia of logging trucks on the highway, tanning beds and laser eye surgery."
+    },
+	"godfather_offer": { "title": "\"An Offer You Can't Refuse\"", "desc": "Immerse yourself in the Sicilian mafia drama for 9 hours, pet the cat with Marlon Brando, learn the laws of the Corleone family and never go against your own." },
+    "mission_impossible_stunt": { "title": "\"Tom Cruise Without a Stunt Double\"", "desc": "Watch Tom Cruise jump off cliffs on a motorcycle, hang on the wing of a taking-off plane and cling to a skyscraper in Dubai without stuntmen while the entire crew's hair turns grey." },
+    "hunger_games_mockingjay": { "title": "\"Mockingjay\"", "desc": "Survive the Capitol arena, shoot a bow with Katniss, go through a teenage revolution and attend a ballet with President Snow." },
+    "halloween_myers": { "title": "\"Uninvited Guest with a Knife\"", "desc": "Endure an endless marathon with a silent man in a blue jumpsuit and white mask who walks but somehow always catches up with running victims." },
+    "ocean_eleven_heist": { "title": "\"Ocean's Eleven\"", "desc": "Rob the most secure casinos in Las Vegas with George Clooney and Brad Pitt while Brad Pitt constantly eats something on screen throughout all three films." },
+    "madagascar_smile_and_wave": { "title": "\"Smile and Wave!\"", "desc": "Escape from Central Park Zoo, throw wild dances to I Like to Move It with Julien and pay tribute to the elite penguin special forces." },
+    "scream_ghostface": { "title": "\"What's Your Favorite Scary Movie?\"", "desc": "Answer the call of the maniac in the white mask, go through all horror cliches, guess the killer before the final twist and learn the main rule: never say \"I'll be right back\"." },
+	
+	 
+    "predator_hunter": { "title": "\"Prey for the Hunter\"", "desc": "Cover yourself in mud from head to toe, learn the phrase \"If it bleeds, we can kill it\" and follow the evolution of an alien hunter with a thermal vision icon." },
+    "evil_dead_groovy": { "title": "\"Groovy, Baby!\"", "desc": "Attach a chainsaw instead of a severed hand, read the Necronomicon spell (without mistakes!) and start a real bloody mess in a forest cabin." },
+    "ghostbusters_proton": { "title": "\"Who You Gonna Call?\"", "desc": "Charge the proton pack, cross the streams against safety rules and beat up the Stay Puft Marshmallow Man to the legendary 80s soundtrack." },
+    "rocky_balboa_eye": { "title": "\"Eye of the Tiger\"", "desc": "Drink a raw egg for breakfast, run up the Philadelphia Museum of Art steps, endure 12 rounds from Ivan Drago and scream across the ring: \"ADRIAN!\"" },
+    "creed_legacy": { "title": "\"Balboa's Heir\"", "desc": "Wrap your hands, take the baton from old Rocky, withstand the challenge from Ivan Drago's son and prove that the legacy is in good hands." },
+    "conjuring_universe": { "title": "\"Part-Time Exorcist\"", "desc": "Survive all the jump scares and paranormal phenomena in haunted houses, help the Warrens hide another cursed doll and never go into the dark basement." },
+    "planet_of_apes": { "title": "\"Apes Together Strong!\"", "desc": "Follow Caesar's journey from a lab primate to the leader of a new civilization, learn sign language and scream across the Golden Gate Bridge: \"NO!\"" },
+    "kingsman_manners": { "title": "\"Manners Maketh Man\"", "desc": "Order a perfect double-breasted suit from the tailor, go to a British pub, lock the door and elegantly beat up thugs with a bulletproof umbrella." },
+	
+	
+	 
+    "tv_firefly_browncoat": { "title": "\"Browncoat\"", "desc": "Watch the cult space western, curse the Fox bosses, mark the cancellation date in your calendar and cry for the rest of your life at the sight of toy dinosaurs and phrases about \"a leaf on the wind\"." },
+    "tv_walking_dead_coral": { "title": "\"CORAL!\"", "desc": "Push through 11 seasons of endless crying, forest fights and soapy dialogue for 15 minutes of zombie action, learn the Carl meme and scream through the whole house: \"CORAL!\"" },
+    "tv_lost_numbers": { "title": "\"4 8 15 16 23 42\"", "desc": "Endure 6 seasons of mysteries, smoke monsters, bunkers and running around the island, enter the numbers into the terminal every 108 minutes, and at the finale sit with an empty head and ask one question: \"And that's fucking it?!\"" },
+    "tv_prison_break_tattoo": { "title": "\"Map on the Ass\"", "desc": "Tattoo the blueprints of Fox River prison on your whole body, escape in the first season, and then spend 4 more seasons stepping on the same rake, escaping from other prisons, because Michael Scofield just can't sit at home." },
+    "tv_breaking_bad_cook": { "title": "\"Real Chemist\"", "desc": "Follow the transformation of a modest chemistry teacher in his underpants into the main drug lord of New Mexico, learn the chemical formula of blue meth and remember the main truth forever: \"Yo, Bitch!\"" },
+    "tv_got_coffee_cup": { "title": "\"Starbucks Cup\"", "desc": "Live 8 years for battles, dragons and intrigues of Westeros, survive the Red Wedding, and in season 8 burn from the farts over the script and find that forgotten coffee cup on Daenerys's table." },
+    "tv_supernatural_pie": { "title": "\"Impala Driver\"", "desc": "Kill 15 years of your life on a marathon of the Winchester brothers, listen to Carry On Wayward Son 500 times, die and resurrect with Sam and Dean at least 10 times and demand your pie!" },
+    "tv_office_that_what_she_said": { "title": "\"That's what she said!\"", "desc": "Spend hundreds of hours in the company of Michael Scott and Dunder Mifflin, survive the most dexterous Spanish shame in the episode \"Scott's Tots\" and insert the joke \"That's what she said\" into absolutely any conversation." },
+    "tv_x_files_truth": { "title": "\"The Truth Is Out There\"", "desc": "Immerse yourself in the paranoia of the 90s, whistle the cult theme on the intro, search for aliens and green men with Mulder while Scully with a stone face explains everything by swamp gases." },
+    "tv_sherlock_sociopath": { "title": "\"High-Functioning Sociopath\"", "desc": "Build a mind palace with Benedict Cumberbatch, examine dirt on boots with a microscope and wait 3 years for a new season while the authors get tangled in their own detective plots." },
+    "tv_sopranos_duck": { "title": "\"Member of the Soprano Family\"", "desc": "Take a psychotherapy course with Tony Soprano, feed the ducks in the pool, eat gabagool, learn the Italian profanity dialect and yell at the TV because of the sudden black screen at the very finale." },
+    "tv_twin_peaks_pie": { "title": "\"Damn Good Coffee!\"", "desc": "For 30 years figure out who the hell killed Laura Palmer, drink 100 cups of \"damn good coffee\", eat cherry pie, enter the Red Room and understand fuck all from David Lynch's season 3." },
+    "tv_friends_pivot": { "title": "\"FRIENDS: ETERNAL REPEAT\"", "desc": "Watch all 10 seasons of the legendary sitcom, argue to a fight about \"WE WERE ON A BREAK!\", learn to carry a sofa screaming \"PIVOT!\" and play this show in the background while eating for the rest of your days." },
+    "tv_boys_compound_v": { "title": "\"Victim of Compound V\"", "desc": "See the true face of psychopathic supes, endure Homelander's laser eyes, giant penises, kilograms of guts and a meat grinder after which regular superhero cartoons seem like kindergarten." },
+    "tv_black_mirror_screen": { "title": "\"Looked into the Dark Screen\"", "desc": "Watch technology break humanity, survive the very first wild episode about the prime minister and the pig, and after each episode sit in silence and look with horror at the turned-off screen of your smartphone." },
+	
+	 
+    "tv_mandalorian_way": { "title": "\"This Is the Way\"", "desc": "Watch a stern mercenary in an iron mask work as a nanny for a green-eared baby, buy yourself a Baby Yoda figurine and repeat with a serious face to any life situation: \"This is the Way\"." },
+    "tv_better_call_saul_lawyer": { "title": "\"Better Call Saul!\"", "desc": "Follow the path from a small-time con man Jimmy McGill to the lawyer of all Albuquerque gangsters, survive the drama of Chuck and the tape, sit through all 6 seasons and realize the spin-off turned out no worse than Breaking Bad." },
+    "tv_dexter_plastic_wrap": { "title": "\"Miami Hitchhiker\"", "desc": "Wrap the room in stretch film, study blood splatter on the wallpaper, punish bad guys with Dexter according to the Code of Harry and burst into tears at the finale with the lumberjack." },
+    "tv_peaky_blinders_by_order": { "title": "\"By Order of the Peaky Blinders!\"", "desc": "Buy a cap, walk slowly to the music of Red Right Hand, take a drag of a cigarette every 5 seconds, yell \"BY ORDER OF THE PEAKY BLINDERS!\" and pretend you're now a real gypsy gangster from Birmingham." },
+    "tv_chernobyl_not_great": { "title": "\"3.6 Roentgen — Not Great, Not Terrible\"", "desc": "Watch the best HBO miniseries, go deaf from the crackle of the dosimeter, learn the phrase about 3.6 roentgen and forever remember the price of lies." },
+    "tv_stranger_things_running_up": { "title": "\"Escape from Vecna\"", "desc": "Immerse yourself in the 80s vibe, play D&D in the basement, escape from the Upside Down to Kate Bush's Running Up That Hill and eat a pack of Eggo waffles." },
+    "tv_silicon_valley_middle_out": { "title": "\"Compression Algorithm\"", "desc": "Invent the Middle-Out algorithm, escape from Indian investors, survive 100 nervous breakdowns of Richard and understand how the Palo Alto IT scene really works." },
+    "tv_fargo_ok_then": { "title": "\"Aga, Ok Then\"", "desc": "Start a bloody mess in snowy Minnesota, meet strange killers, hear the phrase \"Aga, ok then\" 500 times and wonder how ordinary stupidity leads to a mountain of corpses." },
+    "tv_arcane_league": { "title": "\"Tears of Zaun\"", "desc": "Watch the masterpiece animation from Riot Games, fall in love with the crazy Jinx, go deaf from the soundtrack and swear never to download League of Legends itself." },
+	
+	    
+    "anime_konosuba_party": { "title": "\"Party of Idiots\"", "desc": "Assemble a team of a useless alcoholic goddess, a maniac bomber with one spell a day and a masochist who cums from slaps, so that under the control of a nerdy owl with a panty fetish they accidentally save the world through the ass." },
+    "anime_pingpong_club": { "title": "\"Masters of Cringe and Degenerate Sports\"", "desc": "Watch all episodes of this ancient masterpiece, get a lifelong psychological trauma from the local jokes of the 300 level and forever forget what normal, healthy ping-pong even looked like." },
+	
+	    
+    "anime_prison_school": { "title": "\"Masters of Prison Shit-Mining\"", "desc": "Go through all circles of school GULAG under the supervision of cruel whip-wielding wardens, where survival is built on absolute shame, escapes through toilets and proof that human dignity is an empty sound." },
+    "anime_redo_healer": { "title": "\"The Kindest Healer in the Area\"", "desc": "Watch all episodes of this exemplary hybrid of hard hentai and dark fantasy, where the protagonist 'heals' princesses and guards so hard that the viewer themselves should be sent to compulsory psychotherapy." },
+    "anime_death_note": { "title": "\"Battle of the Hunchbacked Schizophrenics\"", "desc": "Watch two genius autists play tennis for 35 episodes straight, eat strawberry cakes by the handful, sit on chairs with their feet up and build such multi-step schemes as if they were deciding the fate of the galaxy, not skipping class." },
+    "anime_nagatoro": { "title": "\"Toxic Pickup for Dummies\"", "desc": "Go through all circles of squinting, crimson cheeks, stuttering and mental slavery, watching how bullying of a downtrodden geek slowly but surely turns into sappy romance under the approving laughter of friends." },
+    "anime_elfen_lied": { "title": "\"Requiem for Dismembered Youth\"", "desc": "Pick up a naked pink-haired girl with amnesia on the beach who only makes 'Nyu' sounds, and five minutes later start a bloody massacre with severed limbs and brains flying across the walls to the divine choral chanting of Lilium." },
+    "anime_higurashi": { "title": "\"Whirlpool of Schizophrenia\"", "desc": "Go through all the sadistic arcs of this mental meat grinder, where every few episodes the timeline resets so you can watch your favorite girlfriends take turns going insane and start cutting each other with rusty knives again." },
+    "anime_chainsaw_man": { "title": "\"Meat Sandwich\"", "desc": "Sell your kidney, eye and conscience for the right to eat bread with jam, make a contract with a devil dog and turn into a walking chainsaw to die endlessly for a kiss." },
+    "anime_black_lagoon": { "title": "\"Lead Rain\"", "desc": "Watch both seasons under the endless roar of heavy machine guns, mercenary curses, cigarette smoke and moral decay in a god-forsaken smuggler town." },
+	
+	    
+    "anime_naruto_legend": { "title": "\"Legend of the Hidden Leaf\"", "desc": "Sit through 700+ episodes for a great goal, but spend three hundred of them on mushroom battles, stupid dreams in a tent and memories of how Sasuke ate a tomato. At the end, scream 'dattebayo'!" },
+    "anime_yani_neko": { "title": "\"Drug Cat\"", "desc": "Watch this acid indie trash under the acrid smell of tobacco, hopelessness, surreal pixels and endless nervous breakdowns at the bottom of everyday life." },
+    "anime_gurren_lagann": { "title": "\"Alpha Pathos\"", "desc": "Yell at the top of your lungs pathetic speeches about drilling the heavens, ride on the armor of a robot without a shirt and win any fight solely on the power of brotherly love and screams." },
+    "anime_toradora": { "title": "\"Tsundere Factory\"", "desc": "Spend 25 episodes in permanent Spanish shame, trying to set up two absolutely insane and blind slowpokes while you yourself are slowly but surely tied to this toxic kitchen." },
+    "anime_chi_sweet_home": { "title": "\"Cat Terror\"", "desc": "Get an acute overdose of cloying cuteness, where the worst crime per season is accidentally peeing past the litter box or stealing a piece of fish." },
+    "anime_made_in_abyss": { "title": "\"Children's Minced Meat\"", "desc": "Watch a colorful cartoon about cute chibis that suddenly turns into a sophisticated festival of biopunk, dismemberment, psychological trauma and turning children into cutlery." },
+	
+	 
+    "anime_mushoku_tensei": { "title": "\"Uncle from the Back Alley\"", "desc": "Get transported to a fantasy world as a newborn baby, keeping the mind of a 34-year-old shut-in virgin, and immediately start groping your own nanny's panties with the face of a maniac." },
+    "anime_fullmetal_alchemist": { "title": "\"Coroner of the Year\"", "desc": "Try to resurrect your dead mom with chalk, a circle and a couple of cans of chemicals, only to get a fleshy nightmare in return and pay with an arm, a leg and your brother." },
+    "anime_bleach": { "title": "\"Professional Recycler\"", "desc": "Die of boredom watching hundreds of filler episodes about some no-names invading, just so the main villain can be defeated in the arc finale by a single deus ex machina strike." },
+    "anime_sword_art_online": { "title": "\"Lord of Random\"", "desc": "Get stuck in a VR game where dying in-game means a real coffin, but instead of grinding and surviving, quickly assemble a harem of schoolgirls and open a cafe in an alt-save." },
+    "anime_berserk": { "title": "\"Therapist with a Club\"", "desc": "Go through so much mental and physical abuse from the plot that even your personal demon guardian starts patting you on the shoulder sympathetically in the rain." },
+	
+	   
+    "anime_count_10": { "title": "\"TV Tourist\"", "desc": "Barged into anime with your foot, watched Death Note, a couple of Miyazaki films and now think you've reached zen. You think everyone else is crazy, but you're already eyeing pink-haired waifus." },
+    "anime_count_50": { "title": "\"Desk Neighbor\"", "desc": "You can already tell Naruto from Bleach, stopped flinching at Japanese names, and confidently navigate school romance. Slowly giving up on real life and starting to order figures." },
+    "anime_count_150": { "title": "\"Hardened Otaku\"", "desc": "The boss has arrived. You know all the isekai cliches by heart, can lecture for hours about the quality of animation in fillers, and strictly watch everything only with subs, despising dubs." },
+    "anime_count_300": { "title": "\"Professional Night Owl\"", "desc": "Curtains drawn shut, the sun causes third-degree burns, and the last time you were outside was under President Yeltsin. Mom has stopped knocking when bringing dumplings to your PC." },
+    "anime_count_500": { "title": "\"Mental Samurai\"", "desc": "You've watched the entire backbone of the industry. Your brain has smoothly rebuilt itself to perceive Japanese humor, you get references to decade-old memes, and you sincerely await season 2 of Highschool of the Dead." },
+    "anime_count_750": { "title": "\"Insomnia Syndicate\"", "desc": "Sleep is for the weak. You binge three seasons a night, feed on energy drinks and chips, and your eyes glow brighter in the dark than a monitor with an open MyAnimeList." },
+    "anime_count_1000": { "title": "\"Archivist of the Abyss\"", "desc": "Congratulations, bro, you've hit rock bottom. You know by heart all the passing isekai of 2014, remember the plots of fifty different school harems, and can quote villain monologues in Japanese (by sound)." },
+    "anime_count_1500": { "title": "\"Anime Deity\"", "desc": "Your soul has finally separated from your body and now resides somewhere on Crunchyroll servers. You've seen such shit and such masterpieces that you can no longer be shaken by any gore, glass, or isekai dad. You are a samurai without fear or reproach, whose room has turned into a temple of plastic waifus." },
+	
+	
+    "movie_count_10": { "title": "\"Popcorn Lover\"", "desc": "You enter the cinema club with blockbusters from the top of Kinopoisk. You know Marcellus Wallace from memes, Christopher Nolan from a dream within a dream, and if you turn on an art film without explosions, you fall asleep at the fifteenth minute." },
+    "movie_count_50": { "title": "\"Night Movie Night\"", "desc": "You confidently distinguish Scorsese from Spielberg, on Friday evenings you stock up on beer for thrillers with David Fincher, and you can already join the debate about who is cooler — Christian Bale's Batman or Ben Affleck's." },
+    "movie_count_150": { "title": "\"Sofa Critic\"", "desc": "Your room is littered with empty cans, and you're seriously lecturing in the comments about 'music video editing' and 'depth of metaphors' in yet another five-hour arthouse. You only go to cinemas with a serious face, judging popcorn munchers." },
+    "movie_count_300": { "title": "\"Lord of the Torrents\"", "desc": "You know by heart the filmographies of all 'New Wave' directors, download films in 4K Remux weighing 80 gigs via VPN, and look down on people for whom the pinnacle of cinema is 'Fast & Furious'." },
+    "movie_count_500": { "title": "\"Cinephile in Rehab\"", "desc": "Your hard drive is stuffed with black-and-white classics of the 40s, French existentialism, and Iranian dramas about boys on bicycles. You've long forgotten what the street smells like, and the sun irritates your retina." },
+    "movie_count_750": { "title": "\"Morgue Operator\"", "desc": "You've watched all the world cinema of category 'B', the trash shriekers of the seventies, body horror with polymer dismemberment, and festival arthouse where they silently stare at a wall for three hours. Your psyche is rolled in concrete." },
+    "movie_count_1000": { "title": "\"Matrix Architect\"", "desc": "You know the plots of all existing scripts, guessing the ending from the first frame is a piece of cake for you, and you quote character dialogues in real life instead of normal words." },
+    "movie_count_1500": { "title": "\"Living Cinematograph\"", "desc": "Your brain has completely turned into film. You exist outside of time and space, your life is divided into a three-act structure with a twist at the end. Reality itself seems to you like a dull cinematic with bad casting." },
+	
+	    
+    "tv_count_10": { "title": "\"Pilot Dinner\"", "desc": "You sat down to watch a couple of episodes with dumplings and woke up at 3 AM saying 'just one more and then definitely sleep'. You know who Walter White is and sincerely believe you can stop at one season." },
+    "tv_count_50": { "title": "\"Weekend Marathoner\"", "desc": "You swallow entire seasons in one sitting. Your weekends are officially booked by streaming services, and the phrase 'skip intro' causes you genuine discomfort." },
+    "tv_count_150": { "title": "\"Cliffhanger Victim\"", "desc": "Your psyche is shaken by constant season finales where the main character is blown up in the last second. You sincerely hate the writers, but still turn on the next season at 4 AM before work." },
+    "tv_count_300": { "title": "\"Professional Couch Potato\"", "desc": "You remember the plots of all eight seasons of House M.D., can list all the babes from Supernatural, and seriously explain to your friends why the dumped finale of Game of Thrones is a personal trauma for your entire life." },
+    "tv_count_500": { "title": "\"Spoiler Catcher\"", "desc": "You don't go online the day before a new episode drops to avoid ruining your trip. Your life has turned into an endless release calendar, and friends are afraid to open their mouths around you in case they accidentally spoil a twist." },
+    "tv_count_750": { "title": "\"Serial Alcoholic\"", "desc": "You've rewatched everything: from gloomy British detective shows where they search for a missing sock for three seasons, to 80-episode Korean dramas about the love of a rich man and a poor waitress. Closing your eyes means missing an important plot thread." },
+    "tv_count_1000": { "title": "\"Master of Binge Watching\"", "desc": "You don't just watch — you live at 1.5x and 2x speed. Your brain has learned to process four storylines at once, and the reflected light from the laptop screen is forever frozen in your eyes." },
+    "tv_count_1500": { "title": "\"Living Netflix\"", "desc": "Congratulations, bro, you've devoured your entire real life for the sake of others' virtual stories. You remember every 90s sitcom, all soap operas and procedural fillers. Your room is a film set, and you've long been waiting for the renewal of your own season." }
+  }
+}

@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme {
+  /* Тёмная тема (по умолчанию) */
+  --color-ink: #0a0a0a;
+  --color-ink-light: #141414;
+  --color-surface: #1a1a1a;
+  --color-border: #2a2a2a;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+
+  /* Оранжевый акцент */
+  --color-gold: #ff9000;
+  --color-gold-light: #ffa733;
+  --color-gold-dark: #cc7300;
+
+  --color-crimson: #8b1a1a;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Geist', system-ui, sans-serif;
+}
+
+/* Светлая тема */
+[data-theme="light"] {
+  --color-ink: #fafafa;
+  --color-ink-light: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-border: #e4e4e7;
+  --color-text-primary: #18181b;
+  --color-text-secondary: #3f3f46;
+  --color-text-muted: #71717a;
+
+  --color-gold: #d97706;
+  --color-gold-light: #ea8c1c;
+  --color-gold-dark: #a35b04;
+}
+
+/* Жёсткое переопределение цветов текста для светлой темы */
+[data-theme="light"] .text-zinc-100,
+[data-theme="light"] .text-zinc-200,
+[data-theme="light"] .text-zinc-300 {
+  color: #18181b; /* почти чёрный */
+}
+
+[data-theme="light"] .text-zinc-400 {
+  color: #3f3f46; /* тёмно-серый */
+}
+
+[data-theme="light"] .text-zinc-500 {
+  color: #52525b; /* серый */
+}
+
+[data-theme="light"] .text-zinc-600 {
+  color: #71717a; /* серый */
+}
+
+/* Фоны для светлой темы */
+[data-theme="light"] .bg-ink {
+  background-color: #fafafa;
+}
+
+[data-theme="light"] .bg-ink-light {
+  background-color: #f4f4f5;
+}
+
+[data-theme="light"] .bg-surface {
+  background-color: #ffffff;
+}
+
+[data-theme="light"] .border-border {
+  border-color: #e4e4e7;
+}
+
+html {
+  font-size: calc(16px * var(--app-scale, 1));
+}
+
+html, body {
+  background: var(--color-ink);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.film-grain::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
+}

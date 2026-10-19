@@ -1,0 +1,1 @@
+UPDATE achievements SET condition_value = 286023 WHERE code = 'sharknado_marathon';
