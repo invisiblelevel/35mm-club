@@ -2,9 +2,9 @@
 
 **Your cinema. Your rules.** · **Твоя кинотека. Твои правила.** · **你的影院。你的规则。**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](../../releases)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6.svg)](#install)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Android%208%2B-0078D6.svg)](#install)
 [![Tauri](https://img.shields.io/badge/tauri-2.12-24C8DB.svg)](https://tauri.app/)
 [![Svelte](https://img.shields.io/badge/svelte-5-FF3E00.svg)](https://svelte.dev/)
 [![Languages](https://img.shields.io/badge/languages-EN%20%7C%20RU%20%7C%20ZH-orange.svg)](#languages)
@@ -15,9 +15,11 @@
 
 ## English
 
-35mm Club is a local-first desktop tracker for movies, TV shows and anime with achievements, XP, ranks and a military-style ribbon rack. All data lives in a single SQLite file on your computer — no clouds, no accounts, no data collection.
+35mm Club is a local-first tracker for movies, TV shows and anime with achievements, XP, ranks and a military-style ribbon rack. All data lives in a single SQLite file on your device — no clouds, no accounts, no data collection.
 
 Add a title → track episodes → earn achievements → level up. Everything happens on your machine, nothing is sent anywhere except the public metadata APIs (TMDB, Shikimori, AniList).
+
+**Available on Windows and Android.**
 
 ### Features
 
@@ -30,10 +32,11 @@ Add a title → track episodes → earn achievements → level up. Everything ha
 - **Diary** — watch history with dates, ratings and notes
 - **Ratings** — half-star precision (0.5–10.0) for movies, TV and anime
 - **Anime progress** — episode counter with auto-complete detection
+- **Backup & restore** — export the entire library, achievements, diary and collections to a single JSON file; import it on another device
 - **Three languages** — English, Russian, Simplified Chinese, with system auto-detection
 - **Dark / light theme** — dark by default, switchable in Settings
 - **Interface zoom** — 100% / 125% / 150% / 200%
-- **Fully offline** — installer bundles WebView2, works without internet after first metadata fetch
+- **Fully offline** — works without internet after the first metadata fetch
 
 ### Achievement categories
 
@@ -55,9 +58,11 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### Install
 
-Download **35mm Club Setup v1.0.0.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
+**Windows:** Download **35mm Club Setup v1.0.1.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
 
-Windows 10 version 1903 or newer / Windows 11 (64-bit).
+**Android:** Download **35mm Club v1.0.1.apk** from [Releases](../../releases), allow installation from unknown sources, install.
+
+Windows 10 version 1903 or newer / Windows 11 (64-bit) · Android 8.0 or newer.
 
 > **Note:** On first launch, the app needs internet access to fetch metadata from TMDB and Shikimori. After that, everything (library, achievements, diary) works fully offline.
 
@@ -67,26 +72,25 @@ Requirements:
 
 - [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) 1.75+
-- Windows 10/11 with WebView2 (usually preinstalled)
+- Windows 10/11 with WebView2, or Android SDK + NDK
 
 Steps:
 
 1. `git clone https://github.com/invisiblelevel/35mm-club.git`
 2. `cd 35mm-club`
 3. `npm install`
-4. `npm run tauri dev` — dev mode
-5. `npm run tauri build` — release build
+4. `npm run tauri dev` — dev mode (desktop)
+5. `npm run tauri build` — release build (Windows)
+6. `npx tauri android build --apk` — release build (Android APK)
 
-The installer will appear in `src-tauri/target/release/bundle/nsis/`.
+The Windows installer will appear in `src-tauri/target/release/bundle/nsis/`. The Android APK will appear in `src-tauri/gen/android/app/build/outputs/apk/universal/release/`.
 
 ### Data location
 
-Your library is stored in:
-%APPDATA%\com.invisiblelevel.35mmclub\35mm_club.db
+- **Windows:** `%APPDATA%\com.invisiblelevel.thirtyfivemmclub\35mm_club.db`
+- **Android:** internal app storage (use **Settings → Backup → Export data** to save).
 
-text
-
-Back it up before updating. If you want to migrate from an older build, copy the old `35mm_club.db` into this folder before first launch.
+Back it up before updating. Use **Settings → Backup → Export** for a portable JSON backup.
 
 ### License
 
@@ -100,9 +104,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 ## Русский
 
-35mm Club — локальный десктопный трекер фильмов, сериалов и аниме с ачивками, XP, званиями и генеральской кокардой. Все данные лежат в одном файле SQLite на твоём компьютере — без облаков, аккаунтов и сбора данных.
+35mm Club — локальный трекер фильмов, сериалов и аниме с ачивками, XP, званиями и генеральской кокардой. Все данные лежат в одном файле SQLite на твоём устройстве — без облаков, аккаунтов и сбора данных.
 
 Добавил тайтл → отметил серии → получил ачивку → поднял уровень. Всё происходит на твоей машине, наружу уходят только запросы к публичным API метаданных (TMDB, Shikimori, AniList).
+
+**Доступно на Windows и Android.**
 
 ### Что умеет
 
@@ -115,10 +121,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 - **Дневник** — история просмотров с датами, оценками и заметками
 - **Рейтинги** — с точностью до половины звезды (0.5–10.0) для фильмов, сериалов и аниме
 - **Прогресс аниме** — счётчик серий с авто-определением завершения
+- **Бэкап и восстановление** — экспорт всей библиотеки, ачивок, дневника и коллекций в один JSON-файл; импорт на другом устройстве
 - **Три языка** — английский, русский, китайский (упрощённый), с авто-определением системного
 - **Тёмная / светлая тема** — тёмная по умолчанию, переключается в настройках
 - **Зум интерфейса** — 100% / 125% / 150% / 200%
-- **Полностью оффлайн** — установщик содержит WebView2, работает без интернета после первой загрузки метаданных
+- **Полностью оффлайн** — работает без интернета после первой загрузки метаданных
 
 ### Категории ачивок
 
@@ -140,9 +147,11 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### Установка
 
-Скачай **35mm Club Setup v1.0.0.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
+**Windows:** Скачай **35mm Club Setup v1.0.1.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
 
-Поддерживается Windows 10 (версия 1903+) / Windows 11 (64-bit).
+**Android:** Скачай **35mm Club v1.0.1.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
+
+Поддерживается Windows 10 (версия 1903+) / Windows 11 (64-bit) · Android 8.0+.
 
 > **Важно:** При первом запуске нужен интернет, чтобы загрузить метаданные из TMDB и Shikimori. После этого всё (библиотека, ачивки, дневник) работает полностью оффлайн.
 
@@ -152,26 +161,25 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 - [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) 1.75+
-- Windows 10/11 с WebView2 (обычно уже установлен)
+- Windows 10/11 с WebView2, или Android SDK + NDK
 
 Шаги:
 
 1. `git clone https://github.com/invisiblelevel/35mm-club.git`
 2. `cd 35mm-club`
 3. `npm install`
-4. `npm run tauri dev` — dev-режим
-5. `npm run tauri build` — релиз
+4. `npm run tauri dev` — dev-режим (десктоп)
+5. `npm run tauri build` — релиз (Windows)
+6. `npx tauri android build --apk` — релиз (Android APK)
 
-Готовый установщик появится в `src-tauri/target/release/bundle/nsis/`.
+Windows-установщик появится в `src-tauri/target/release/bundle/nsis/`. Android APK — в `src-tauri/gen/android/app/build/outputs/apk/universal/release/`.
 
 ### Где лежат данные
 
-Твоя библиотека хранится в:
-%APPDATA%\com.invisiblelevel.35mmclub\35mm_club.db
+- **Windows:** `%APPDATA%\com.invisiblelevel.thirtyfivemmclub\35mm_club.db`
+- **Android:** внутренняя папка приложения (используй **Настройки → Резервная копия → Экспорт данных**).
 
-text
-
-Сделай бэкап перед обновлением. Если переносишь данные из старой версии — скопируй старый `35mm_club.db` в эту папку перед первым запуском.
+Сделай бэкап перед обновлением. Для переноса между устройствами — **Настройки → Резервная копия → Экспорт**.
 
 ### Лицензия
 
@@ -185,9 +193,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 ## 中文
 
-35mm Club 是一款本地优先的电影、剧集和动漫追踪器，带有成就、经验值、军衔和将军式勋表。所有数据存储在你电脑上的单个 SQLite 文件中——无云端、无账号、无数据收集。
+35mm Club 是一款本地优先的电影、剧集和动漫追踪器，带有成就、经验值、军衔和将军式勋表。所有数据存储在你设备上的单个 SQLite 文件中——无云端、无账号、无数据收集。
 
 添加条目 → 记录剧集 → 获得成就 → 升级。所有操作都在本机完成，只有元数据请求会发送到公开 API（TMDB、Shikimori、AniList）。
+
+**支持 Windows 和 Android。**
 
 ### 功能
 
@@ -200,10 +210,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 - **观影日记** — 带日期、评分和笔记的观看历史
 - **评分** — 半星精度（0.5–10.0），适用于电影、剧集和动漫
 - **动漫进度** — 剧集计数器，自动检测完成
+- **备份与恢复** — 将整个媒体库、成就、日记和收藏集导出为单个 JSON 文件；可在另一台设备上导入
 - **三种语言** — 英语、俄语、简体中文，支持系统自动检测
 - **深色 / 浅色主题** — 默认深色，可在设置中切换
 - **界面缩放** — 100% / 125% / 150% / 200%
-- **完全离线** — 安装包内置 WebView2，首次获取元数据后无需网络即可运行
+- **完全离线** — 首次获取元数据后无需网络即可运行
 
 ### 成就类别
 
@@ -225,9 +236,11 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### 安装
 
-从 [Releases](../../releases) 下载 **35mm Club Setup v1.0.0.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
+**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.0.1.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
 
-支持 Windows 10（1903 或更新版本）/ Windows 11（64 位）。
+**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.0.1.apk**，允许从未知来源安装，然后安装。
+
+支持 Windows 10（1903 或更新版本）/ Windows 11（64 位）· Android 8.0+。
 
 > **重要：** 首次启动需要网络连接以从 TMDB 和 Shikimori 获取元数据。之后所有内容（媒体库、成就、日记）均可完全离线使用。
 
@@ -237,26 +250,25 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 - [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) 1.75+
-- Windows 10/11 且已安装 WebView2（通常系统自带）
+- Windows 10/11 且已安装 WebView2，或 Android SDK + NDK
 
 步骤：
 
 1. `git clone https://github.com/invisiblelevel/35mm-club.git`
 2. `cd 35mm-club`
 3. `npm install`
-4. `npm run tauri dev` — 开发模式
-5. `npm run tauri build` — 发布构建
+4. `npm run tauri dev` — 开发模式（桌面）
+5. `npm run tauri build` — 发布构建（Windows）
+6. `npx tauri android build --apk` — 发布构建（Android APK）
 
-安装包将生成于 `src-tauri/target/release/bundle/nsis/`。
+Windows 安装包将生成于 `src-tauri/target/release/bundle/nsis/`。Android APK 将生成于 `src-tauri/gen/android/app/build/outputs/apk/universal/release/`。
 
 ### 数据位置
 
-你的媒体库存储在：
-%APPDATA%\com.invisiblelevel.35mmclub\35mm_club.db
+- **Windows:** `%APPDATA%\com.invisiblelevel.thirtyfivemmclub\35mm_club.db`
+- **Android:** 应用内部存储（使用 **设置 → 备份 → 导出数据**）。
 
-text
-
-更新前请备份。如果从旧版本迁移，请在首次启动前将旧的 `35mm_club.db` 复制到此文件夹。
+更新前请备份。跨设备迁移 — **设置 → 备份 → 导出**。
 
 ### 许可证
 
