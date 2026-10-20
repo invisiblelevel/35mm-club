@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { invoke, convertFileSrc } from '@tauri-apps/api/core';
   import { open } from '@tauri-apps/plugin-dialog';
+  import { readFile } from '@tauri-apps/plugin-fs';
   import { User, Trophy, Film, Tv, Clapperboard, Camera, Pencil, Check, X } from 'lucide-svelte';
   import AchievementIcon from '$lib/components/AchievementIcon.svelte';
 
@@ -41,7 +42,6 @@
   let editingName = $state(false);
   let nameInput = $state('');
 
-  // Цвета для бейджа редкости
   const tierColors: Record<string, { bg: string; text: string; border: string; label: string }> = {
     common:    { bg: 'bg-zinc-700/50', text: 'text-zinc-300', border: 'border-zinc-600', label: 'Common' },
     rare:      { bg: 'bg-blue-900/50', text: 'text-blue-300', border: 'border-blue-700', label: 'Rare' },
@@ -49,7 +49,6 @@
     legendary: { bg: 'bg-amber-950/80', text: 'text-amber-300', border: 'border-amber-600', label: 'Legendary' },
   };
 
-  // Цвета категорий для сегментов на кокарде
   const categoryColors: Record<string, string> = {
     progress: '#fbbf24',
     movie: '#f59e0b',
@@ -62,14 +61,12 @@
     time: '#a8a29e',
   };
 
-  // Кокарда: количество звёзд по званию
   let starCount = $derived(
     profile
       ? (profile.level >= 46 ? 4 : profile.level >= 34 ? 3 : profile.level >= 27 ? 2 : profile.level >= 20 ? 1 : 0)
       : 0
   );
 
-  // Сегменты на планке: 8 последних полученных ачивок
   let ribbonSegments = $derived(
     recentAchievements.slice(0, 8).map(a => categoryColors[a.category] || '#666')
   );
@@ -121,10 +118,18 @@
       const path = typeof file === 'string' ? file : (file as any).path;
       if (!path) { uploading = false; return; }
 
-      await invoke<string>('set_avatar', { sourcePath: path });
+      const bytes = await readFile(path);
+      let binary = '';
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      await invoke<string>('set_avatar', { imageData: base64 });
       await loadProfile();
     } catch (e) {
-      console.error('avatar upload failed:', e);
+      alert('Avatar upload failed: ' + String(e));
     } finally {
       uploading = false;
     }
@@ -163,10 +168,14 @@
     const rect = target.getBoundingClientRect();
     const tooltipWidth = 256;
     const padding = 8;
-    let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-    left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding));
-    const top = rect.top - padding;
-    profileTooltipStyle = `top: ${top}px; left: ${left}px; transform: translateY(-100%);`;
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      profileTooltipStyle = `top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px;`;
+    } else {
+      let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+      left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding));
+      profileTooltipStyle = `top: ${rect.top - padding}px; left: ${left}px; transform: translateY(-100%);`;
+    }
     hoveredAch = ach;
   }
 
@@ -178,14 +187,14 @@
 {#if loading}
   <div class="text-center text-zinc-500 py-20">{$t('common.loading')}</div>
 {:else if profile}
-  <div class="max-w-5xl mx-auto space-y-8">
-    <div class="relative rounded-2xl overflow-hidden bg-surface border border-border p-8">
-      <div class="flex items-center gap-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="relative rounded-2xl overflow-hidden bg-surface border border-border p-4 md:p-8">
+      <div class="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6">
         <button
           type="button"
           onclick={pickAvatar}
           disabled={uploading}
-          class="relative w-28 h-28 rounded-full bg-ink-light border-2 border-gold/50 flex items-center justify-center shrink-0 overflow-hidden group disabled:opacity-60 cursor-pointer"
+          class="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-ink-light border-2 border-gold/50 flex items-center justify-center shrink-0 overflow-hidden group disabled:opacity-60 cursor-pointer"
           title={$t('profile.change_avatar')}
         >
           {#if profile.avatar_path && avatarSrc(profile.avatar_path)}
@@ -198,105 +207,105 @@
           </div>
         </button>
 
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 w-full min-w-0 text-center md:text-left">
           {#if editingName}
-            <div class="flex items-center gap-2 mb-1">
+            <div class="flex items-center justify-center md:justify-start gap-2 mb-1">
               <input
                 type="text"
                 bind:value={nameInput}
                 onkeydown={(e) => e.key === 'Enter' && saveName()}
-                class="font-display text-3xl font-bold bg-ink-light border border-border rounded-lg px-3 py-1 text-zinc-100 focus:border-gold focus:outline-none"
+                class="font-display text-2xl md:text-3xl font-bold bg-ink-light border border-border rounded-lg px-3 py-1 text-zinc-100 focus:border-gold focus:outline-none w-full max-w-xs"
                 maxlength="32"
               />
-              <button onclick={saveName} class="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-colors">
+              <button onclick={saveName} class="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-colors shrink-0">
                 <Check size={16} />
               </button>
-              <button onclick={() => editingName = false} class="w-8 h-8 rounded-lg bg-surface border border-border text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition-colors">
+              <button onclick={() => editingName = false} class="w-8 h-8 rounded-lg bg-surface border border-border text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition-colors shrink-0">
                 <X size={16} />
               </button>
             </div>
           {:else}
-            <div class="flex items-baseline gap-3 mb-1 group flex-wrap">
-              <h1 class="font-display text-3xl font-bold truncate">{profile.username}</h1>
-              <button onclick={startEditName} class="text-zinc-500 hover:text-gold transition-colors opacity-0 group-hover:opacity-100" title="Изменить имя">
-                <Pencil size={16} />
+            <div class="flex items-baseline justify-center md:justify-start gap-2 md:gap-3 mb-1">
+              <button
+                onclick={startEditName}
+                class="flex items-center gap-2 text-left group/edit cursor-pointer min-h-[44px] px-2 -mx-2 rounded-lg active:bg-ink-light/50 md:active:bg-transparent transition-colors"
+                title="Изменить имя"
+              >
+                <h1 class="font-display text-2xl md:text-3xl font-bold truncate">{profile.username}</h1>
+                <Pencil size={16} class="text-zinc-500 group-hover/edit:text-gold md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0" />
               </button>
               <span class="text-sm text-gold font-medium">Lv. {profile.level}</span>
-
-              <!-- КОКОАРДА -->
-              {#if starCount > 0}
-                <div class="relative ml-2" title="Генеральская кокарда">
-                  <!-- Планка с цветными сегментами -->
-                  <div 
-                    class="relative flex h-7 rounded-sm overflow-hidden"
-                    style="
-                      border: 1px solid #2a2a2a;
-                      box-shadow: 
-                        0 2px 4px rgba(0,0,0,0.6), 
-                        0 0 8px rgba(255,144,0,0.3),
-                        inset 0 1px 1px rgba(255,255,255,0.2),
-                        inset 0 -1px 2px rgba(0,0,0,0.4);
-                    "
-                  >
-                    <!-- Сегменты с бликом -->
-                    {#if ribbonSegments.length === 0}
-                      <div class="flex-1" style="background: linear-gradient(180deg, #555 0%, #333 50%, #222 100%);"></div>
-                    {:else}
-                      {#each ribbonSegments as color}
-                        <div style="background: linear-gradient(180deg, {color}ee 0%, {color} 40%, {color}cc 60%, {color}88 100%); width: 14px; box-shadow: inset -1px 0 0 rgba(0,0,0,0.3);"></div>
-                      {/each}
-                    {/if}
-                    
-                    <!-- Блик сверху (глянец) -->
-                    <div class="absolute top-0 left-0 right-0 h-1/2 pointer-events-none" 
-                         style="background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%);"></div>
-                  </div>
-                  
-                  <!-- Звёзды по центру планки (объёмные) -->
-                  <div class="absolute inset-0 flex items-center justify-center gap-0.5 pointer-events-none">
-                    {#each Array(starCount) as _}
-                      <span 
-                        style="
-                          font-size: 19px; 
-                          line-height: 1; 
-                          color: #ffd700; 
-                          text-shadow: 
-                            0 1px 0 #b8860b, 
-                            0 2px 3px rgba(0,0,0,0.8), 
-                            0 0 6px rgba(255,215,0,0.6);
-                        "
-                      >★</span>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
             </div>
           {/if}
+
+          {#if starCount > 0 && !editingName}
+            <div class="flex justify-center md:justify-start mb-2">
+              <div class="relative" title="Генеральская кокарда">
+                <div
+                  class="relative flex h-7 rounded-sm overflow-hidden"
+                  style="
+                    border: 1px solid #2a2a2a;
+                    box-shadow:
+                      0 2px 4px rgba(0,0,0,0.6),
+                      0 0 8px rgba(255,144,0,0.3),
+                      inset 0 1px 1px rgba(255,255,255,0.2),
+                      inset 0 -1px 2px rgba(0,0,0,0.4);
+                  "
+                >
+                  {#if ribbonSegments.length === 0}
+                    <div class="flex-1" style="background: linear-gradient(180deg, #555 0%, #333 50%, #222 100%);"></div>
+                  {:else}
+                    {#each ribbonSegments as color}
+                      <div style="background: linear-gradient(180deg, {color}ee 0%, {color} 40%, {color}cc 60%, {color}88 100%); width: 14px; box-shadow: inset -1px 0 0 rgba(0,0,0,0.3);"></div>
+                    {/each}
+                  {/if}
+                  <div class="absolute top-0 left-0 right-0 h-1/2 pointer-events-none"
+                       style="background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 100%);"></div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center gap-0.5 pointer-events-none">
+                  {#each Array(starCount) as _}
+                    <span
+                      style="
+                        font-size: 19px;
+                        line-height: 1;
+                        color: #ffd700;
+                        text-shadow:
+                          0 1px 0 #b8860b,
+                          0 2px 3px rgba(0,0,0,0.8),
+                          0 0 6px rgba(255,215,0,0.6);
+                      "
+                    >★</span>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {/if}
+
           <p class="text-zinc-400 mb-3">{$t(profile.rank_name)}</p>
 
-          <div class="mb-1">
+          <div class="mb-1 max-w-md mx-auto md:mx-0">
             <div class="h-2 bg-ink-light rounded-full overflow-hidden">
               <div class="h-full bg-gradient-to-r from-gold to-gold-light transition-all duration-500" style="width: {xpProgressPercent}%"></div>
             </div>
           </div>
-          <div class="flex justify-between text-xs text-zinc-500">
+          <div class="flex justify-between text-xs text-zinc-500 max-w-md mx-auto md:mx-0">
             <span>{profile.xp} XP</span>
             <span>{profile.xp_to_next_level} XP до Lv. {profile.level + 1}</span>
           </div>
         </div>
 
-        <div class="text-right shrink-0">
+        <div class="text-center md:text-right shrink-0">
           <div class="text-2xl font-bold text-gold">{Math.floor(profile.total_watch_minutes / 60)}</div>
           <div class="text-xs text-zinc-500">{$t('profile.total_hours')}</div>
         </div>
       </div>
     </div>
 
-    <div class="flex gap-2 border-b border-border">
+    <div class="flex gap-2 border-b border-border overflow-x-auto">
       {#each tabs as tab}
         <button
           onclick={() => activeTab = tab.value}
-          class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative {activeTab === tab.value ? 'text-gold' : 'text-zinc-400 hover:text-zinc-100'}"
+          class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap {activeTab === tab.value ? 'text-gold' : 'text-zinc-400 hover:text-zinc-100'}"
         >
           <svelte:component this={tab.icon} size={16} />
           {$t(tab.labelKey)}
@@ -308,22 +317,22 @@
     </div>
 
     <div class="space-y-6">
-      <div class="grid grid-cols-3 gap-4">
-        <div class="bg-surface border border-border rounded-xl p-5">
-          <div class="text-3xl font-bold">{counts[activeTab]}</div>
+      <div class="grid grid-cols-3 gap-3 md:gap-4">
+        <div class="bg-surface border border-border rounded-xl p-3 md:p-5">
+          <div class="text-2xl md:text-3xl font-bold">{counts[activeTab]}</div>
           <div class="text-xs text-zinc-500 mt-1">{$t('profile.stat_count')}</div>
         </div>
-        <div class="bg-surface border border-border rounded-xl p-5">
-          <div class="text-3xl font-bold text-gold">{completed[activeTab]}</div>
+        <div class="bg-surface border border-border rounded-xl p-3 md:p-5">
+          <div class="text-2xl md:text-3xl font-bold text-gold">{completed[activeTab]}</div>
           <div class="text-xs text-zinc-500 mt-1">{$t('profile.stat_completed')}</div>
         </div>
-        <div class="bg-surface border border-border rounded-xl p-5">
-          <div class="text-3xl font-bold">{Math.floor(profile.total_watch_minutes / 60)}</div>
+        <div class="bg-surface border border-border rounded-xl p-3 md:p-5">
+          <div class="text-2xl md:text-3xl font-bold">{Math.floor(profile.total_watch_minutes / 60)}</div>
           <div class="text-xs text-zinc-500 mt-1">{$t('profile.stat_hours')}</div>
         </div>
       </div>
 
-      <div class="bg-surface border border-border rounded-xl p-6">
+      <div class="bg-surface border border-border rounded-xl p-4 md:p-6">
         <h3 class="font-display text-lg font-semibold mb-4 flex items-center gap-2">
           <Trophy size={18} class="text-gold" />
           {$t('profile.recent_achievements')}
@@ -335,12 +344,12 @@
             <p class="text-xs text-zinc-600 mt-1">{$t('profile.no_achievements_hint')}</p>
           </div>
         {:else}
-          <div class="grid grid-cols-6 gap-3">
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
             {#each recentAchievements as ach}
               {@const tier = tierColors[ach.tier] ?? tierColors.common}
               {@const isLegendary = ach.tier === 'legendary'}
               {@const isAnime = ach.category === 'anime'}
-              
+
               {#if isLegendary}
                 <div
                   class="group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 flex items-center justify-center"
@@ -351,18 +360,22 @@
                   "
                   onmouseenter={(e) => showProfileTooltip(e, ach)}
                   onmouseleave={hideProfileTooltip}
+                  onclick={(e) => showProfileTooltip(e, ach)}
                 >
                   <div class="absolute inset-0 pointer-events-none animate-pulse"
                        style="background: radial-gradient(circle at center, rgba(251,191,36,0.15) 0%, transparent 70%);"></div>
                   <div class="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                        style="box-shadow: inset 0 0 20px rgba(251,191,36,0.5);"></div>
 
-                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border"
+                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[7px] md:text-[8px] font-semibold uppercase tracking-wider border"
                        style="background: rgba(120, 53, 15, 0.8); color: #fde68a; border-color: rgba(251, 191, 36, 0.8);">
                     LEGENDARY
                   </div>
 
-                  <div class="relative transition-transform duration-300 group-hover:scale-110">
+                  <div class="relative transition-transform duration-300 group-hover:scale-110 md:hidden">
+                    <AchievementIcon code={ach.code} size={64} />
+                  </div>
+                  <div class="relative transition-transform duration-300 group-hover:scale-110 hidden md:block">
                     <AchievementIcon code={ach.code} size={72} />
                   </div>
                 </div>
@@ -371,15 +384,19 @@
                   class="group relative aspect-square rounded-xl bg-purple-950/40 border border-purple-800/60 flex items-center justify-center cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/80 hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]"
                   onmouseenter={(e) => showProfileTooltip(e, ach)}
                   onmouseleave={hideProfileTooltip}
+                  onclick={(e) => showProfileTooltip(e, ach)}
                 >
                   <div class="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                        style="background: radial-gradient(circle at center, rgba(168,85,247,0.15) 0%, transparent 70%);"></div>
 
-                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border bg-purple-900/80 text-purple-200 border-purple-700">
+                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[7px] md:text-[8px] font-semibold uppercase tracking-wider border bg-purple-900/80 text-purple-200 border-purple-700">
                     ANIME
                   </div>
 
-                  <div class="relative transition-transform duration-300 group-hover:scale-105">
+                  <div class="relative transition-transform duration-300 group-hover:scale-105 md:hidden">
+                    <AchievementIcon code={ach.code} size={64} />
+                  </div>
+                  <div class="relative transition-transform duration-300 group-hover:scale-105 hidden md:block">
                     <AchievementIcon code={ach.code} size={72} />
                   </div>
                 </div>
@@ -388,15 +405,19 @@
                   class="group relative aspect-square rounded-xl bg-surface border border-gold/30 flex items-center justify-center cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_20px_rgba(255,144,0,0.25)]"
                   onmouseenter={(e) => showProfileTooltip(e, ach)}
                   onmouseleave={hideProfileTooltip}
+                  onclick={(e) => showProfileTooltip(e, ach)}
                 >
                   <div class="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                        style="background: radial-gradient(circle at center, rgba(255,144,0,0.08) 0%, transparent 70%);"></div>
 
-                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border {tier.bg} {tier.text} {tier.border}">
+                  <div class="absolute top-1.5 right-1.5 px-1 py-0.5 rounded text-[7px] md:text-[8px] font-semibold uppercase tracking-wider border {tier.bg} {tier.text} {tier.border}">
                     {tier.label}
                   </div>
 
-                  <div class="relative transition-transform duration-300 group-hover:scale-105">
+                  <div class="relative transition-transform duration-300 group-hover:scale-105 md:hidden">
+                    <AchievementIcon code={ach.code} size={64} />
+                  </div>
+                  <div class="relative transition-transform duration-300 group-hover:scale-105 hidden md:block">
                     <AchievementIcon code={ach.code} size={72} />
                   </div>
                 </div>
@@ -411,7 +432,7 @@
 
 {#if hoveredAch}
   <div
-    class="fixed z-[100] w-64 p-3 rounded-lg bg-ink-light border border-border shadow-xl pointer-events-none"
+    class="fixed z-[100] p-3 rounded-lg bg-ink-light border border-border shadow-xl pointer-events-none"
     style={profileTooltipStyle}
   >
     <p class="text-sm font-bold text-zinc-100 mb-1">

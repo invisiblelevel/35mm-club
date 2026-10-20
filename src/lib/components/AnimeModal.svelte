@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t, locale } from 'svelte-i18n';
-  import { X, Star, Check } from 'lucide-svelte';
+  import { X, Star, Check, Play, Clock, Pause, Trash2 } from 'lucide-svelte';
   import { invoke } from '@tauri-apps/api/core';
 
   type AnimeSearchItem = {
@@ -29,7 +29,6 @@
   let studio = $state<string | null>(null);
   let year = $state<number | null>(item.year);
 
-  // Если описание из поиска не пришло — дёргаем details при монтировании.
   $effect(() => {
     if (description) return;
     let cancelled = false;
@@ -48,18 +47,17 @@
   });
 
   const statuses = [
-    { value: 'watching', key: 'status.watching' },
-    { value: 'completed', key: 'status.completed' },
-    { value: 'planned', key: 'status.planned' },
-    { value: 'on_hold', key: 'status.on_hold' },
-    { value: 'dropped', key: 'status.dropped' },
+    { value: 'watching', key: 'status.watching', icon: Play },
+    { value: 'completed', key: 'status.completed', icon: Check },
+    { value: 'planned', key: 'status.planned', icon: Clock },
+    { value: 'on_hold', key: 'status.on_hold', icon: Pause },
+    { value: 'dropped', key: 'status.dropped', icon: Trash2 },
   ];
 
   function handleBackdrop(e: MouseEvent) {
     if (e.target === e.currentTarget) onClose();
   }
 
-  // Убираем HTML-теги из Shikimori-описания ([character=...]...[/character], <br> и т.д.)
   function cleanDescription(html: string | null): string | null {
     if (!html) return null;
     return html
@@ -107,26 +105,26 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onClose()} />
 
-<div class="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm" onclick={handleBackdrop} role="presentation">
-  <div class="relative w-full max-w-3xl rounded-xl bg-surface border border-border shadow-2xl overflow-hidden" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-    <button onclick={onClose} class="absolute top-3 right-3 z-10 w-8 h-8 rounded-md flex items-center justify-center text-zinc-400 hover:bg-ink-light hover:text-zinc-100 transition-colors" aria-label={$t('common.close')}>
+<div class="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-5 bg-black/70 backdrop-blur-sm" onclick={handleBackdrop} role="presentation">
+  <div class="relative w-full max-w-3xl max-h-[92vh] md:max-h-[90vh] overflow-y-auto rounded-t-2xl md:rounded-xl bg-surface border border-border shadow-2xl pb-[env(safe-area-inset-bottom)] md:pb-0" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+    <button onclick={onClose} class="absolute top-3 right-3 z-10 w-8 h-8 rounded-md flex items-center justify-center text-zinc-400 hover:bg-ink-light hover:text-zinc-100 transition-colors bg-surface/80 backdrop-blur" aria-label={$t('common.close')}>
       <X size={16} />
     </button>
 
-    <div class="flex gap-6 p-6">
+    <div class="flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6">
       {#if item.cover_url}
-        <img src={item.cover_url} alt={item.title} class="w-48 h-72 object-cover rounded-lg shrink-0" />
+        <img src={item.cover_url} alt={item.title} loading="eager" decoding="async" fetchpriority="high" class="w-full md:w-48 h-48 md:h-72 object-cover rounded-lg shrink-0" />
       {:else}
-        <div class="w-48 h-72 bg-ink-light rounded-lg shrink-0 flex items-center justify-center text-zinc-600 text-xs">{$t('search.no_poster')}</div>
+        <div class="w-full md:w-48 h-48 md:h-72 bg-ink-light rounded-lg shrink-0 flex items-center justify-center text-zinc-600 text-xs">{$t('search.no_poster')}</div>
       {/if}
 
       <div class="flex-1 min-w-0">
-        <h2 class="font-display text-2xl font-bold mb-2">{item.title}</h2>
+        <h2 class="font-display text-xl md:text-2xl font-bold mb-2 pr-8">{item.title}</h2>
         {#if item.title_original && item.title_original !== item.title}
           <p class="text-sm text-zinc-500 mb-2">{item.title_original}</p>
         {/if}
 
-        <div class="flex items-center gap-4 text-sm text-zinc-400 mb-4">
+        <div class="flex items-center gap-4 text-sm text-zinc-400 mb-4 flex-wrap">
           {#if year}<span>{year}</span>{/if}
           {#if item.episodes}<span>{item.episodes} {$t('title_page.episodes')}</span>{/if}
           {#if item.average_score}
@@ -148,9 +146,16 @@
         {:else}
           <div>
             <p class="text-sm text-zinc-400 mb-3">{$t('title_modal.choose_status')}</p>
-            <div class="flex flex-wrap gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {#each statuses as s}
-                <button onclick={() => saveToLibrary(s.value)} disabled={saving} class="px-4 py-2 rounded-lg text-sm bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold transition-colors disabled:opacity-50">{$t(s.key)}</button>
+                <button
+                  onclick={() => saveToLibrary(s.value)}
+                  disabled={saving}
+                  class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.96] text-ink font-medium text-sm transition-all disabled:opacity-50 shadow-lg shadow-gold/20"
+                >
+                  <svelte:component this={s.icon} size={16} />
+                  <span>{$t(s.key)}</span>
+                </button>
               {/each}
             </div>
             {#if saving}<p class="text-xs text-zinc-500 mt-3">{$t('common.loading')}</p>{/if}

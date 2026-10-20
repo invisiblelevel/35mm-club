@@ -17,7 +17,7 @@
 
   import {
     Film, Tv, Clapperboard, BookOpen, FolderHeart,
-    Trophy, User, Settings, Search, Info, Loader2
+    Trophy, User, Settings, Search, Info, Loader2, Menu, X
   } from 'lucide-svelte';
 
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -29,6 +29,8 @@
   let topSearch = $state('');
   let toastQueue: ToastData[] = $state([]);
   let translating = $state(false);
+  let sidebarOpen = $state(false);
+
   const currentToast = $derived(toastQueue.length > 0 ? toastQueue[0] : null);
 
   onMount(() => {
@@ -37,8 +39,7 @@
     const handleToast = (e: Event) => {
       const customEvent = e as CustomEvent<ToastData>;
       toastQueue = [...toastQueue, customEvent.detail];
-      
-      // Проигрываем звук ачивки
+
       try {
         const audio = new Audio('/achivka.wav');
         audio.volume = 0.5;
@@ -60,6 +61,11 @@
     }
   });
 
+  $effect(() => {
+    page.url.pathname;
+    sidebarOpen = false;
+  });
+
   const navItems = [
     { href: '/profile', key: 'nav.profile', icon: User },
     { href: '/library/movies', key: 'nav.movies', icon: Film },
@@ -74,12 +80,12 @@
     if (translating) return;
     locale.set(l);
     localStorage.setItem('35mm-locale', l);
-    
+
     translating = true;
     try {
-      await invoke('refresh_titles_language', { 
-        apiKey: settings.tmdbKey || null, 
-        locale: l 
+      await invoke('refresh_titles_language', {
+        apiKey: settings.tmdbKey || null,
+        locale: l,
       });
       window.dispatchEvent(new CustomEvent('35mm-data-changed'));
     } catch (e) {
@@ -106,15 +112,36 @@
   </div>
 {:then}
   <div class="min-h-screen bg-ink text-zinc-100 flex">
-    <aside class="w-64 bg-ink-light border-r border-border flex flex-col">
-      <div class="p-6 border-b border-border">
-        <h1 class="font-display text-2xl font-bold tracking-tight">
-          35<span class="text-gold">mm</span> Club
-        </h1>
-        <p class="text-xs text-zinc-500 mt-1">{$t('app.tagline')}</p>
+    {#if sidebarOpen}
+      <div
+        class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+        onclick={() => sidebarOpen = false}
+        role="presentation"
+      ></div>
+    {/if}
+
+    <aside
+      class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-ink-light border-r border-border flex flex-col transform transition-transform duration-300 ease-out
+             {sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+             pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+    >
+      <div class="p-6 border-b border-border flex items-center justify-between">
+        <div>
+          <h1 class="font-display text-2xl font-bold tracking-tight">
+            35<span class="text-gold">mm</span> Club
+          </h1>
+          <p class="text-xs text-zinc-500 mt-1">{$t('app.tagline')}</p>
+        </div>
+        <button
+          onclick={() => sidebarOpen = false}
+          class="md:hidden text-zinc-400 hover:text-zinc-100"
+          aria-label="Close menu"
+        >
+          <X size={22} />
+        </button>
       </div>
 
-      <nav class="flex-1 p-4 space-y-1">
+      <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
         {#each navItems as item}
           <a
             href={item.href}
@@ -137,37 +164,38 @@
       </div>
     </aside>
 
-    <main class="flex-1 overflow-auto">
-      <header class="sticky top-0 z-10 bg-ink/80 backdrop-blur-sm border-b border-border px-8 py-4">
-        <div class="flex items-center gap-4">
-          <div class="relative flex-1 max-w-md">
+    <main class="flex-1 overflow-auto min-w-0 flex flex-col h-screen">
+      <header class="sticky top-0 z-10 bg-ink/80 backdrop-blur-sm border-b border-border px-3 md:px-8 py-3 md:py-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div class="flex items-center gap-2 md:gap-3">
+          <button
+            onclick={() => sidebarOpen = true}
+            class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-zinc-400 hover:text-gold transition-colors shrink-0"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          <div class="relative flex-1 min-w-0">
             <Search size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
               placeholder={$t('nav.search_placeholder')}
               bind:value={topSearch}
               onkeydown={(e) => e.key === 'Enter' && submitTopSearch()}
-              class="w-full pl-10 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none transition-colors"
+              class="w-full pl-10 pr-3 py-2 bg-surface border border-border rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none transition-colors"
             />
           </div>
 
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1 bg-surface border border-border rounded-lg p-1">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-0.5 bg-surface border border-border rounded-lg p-0.5">
               {#each Object.entries(locales) as [code]}
                 <button
                   onclick={() => changeLocale(code as Locale)}
                   disabled={translating}
-                  class="px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 {$locale === code ? 'bg-gold text-ink' : 'text-zinc-400 hover:text-zinc-100'}"
+                  class="px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 {$locale === code ? 'bg-gold text-ink' : 'text-zinc-400 hover:text-zinc-100'}"
                 >{code === 'zh-CN' ? '中文' : code.toUpperCase()}</button>
               {/each}
             </div>
-
-            {#if translating}
-              <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-gold/30 text-xs text-gold">
-                <Loader2 size={14} class="animate-spin" />
-                <span>{$t('common.loading')}</span>
-              </div>
-            {/if}
 
             <button
               onclick={() => showAbout = true}
@@ -179,7 +207,7 @@
         </div>
       </header>
 
-      <div class="p-8">
+      <div class="p-4 md:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] flex-1 overflow-y-auto">
         <slot />
       </div>
     </main>

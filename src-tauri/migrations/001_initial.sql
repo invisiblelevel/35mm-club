@@ -435,7 +435,7 @@ VALUES
     ('anime_konosuba_party', 'anime', 'game-icons:beer-stein', 80, 'global', 'epic', 'anime_franchise_completed', 30831, 1, 0, 'achievements.ach.anime_konosuba_party.title', 'achievements.ach.anime_konosuba_party.desc'),
     ('anime_pingpong_club', 'anime', 'game-icons:ping-pong-bat', 50, 'global', 'rare', 'anime_episodes_completed', 914, 1, 0, 'achievements.ach.anime_pingpong_club.title', 'achievements.ach.anime_pingpong_club.desc'),
     ('anime_prison_school', 'anime', 'game-icons:handcuffs', 60, 'global', 'epic', 'anime_franchise_completed', 30240, 2, 0, 'achievements.ach.anime_prison_school.title', 'achievements.ach.anime_prison_school.desc'),
-    ('anime_redo_healer', 'anime', 'game-icons:healing', 60, 'global', 'epic', 'anime_episodes_completed', 37992, 1, 0, 'achievements.ach.anime_redo_healer.title', 'achievements.ach.anime_redo_healer.desc'),
+    ('anime_redo_healer', 'anime', 'game-icons:healing', 60, 'global', 'epic', 'anime_episodes_completed', 40750, 1, 0, 'achievements.ach.anime_redo_healer.title', 'achievements.ach.anime_redo_healer.desc'),
     ('anime_death_note', 'anime', 'game-icons:notebook', 70, 'global', 'epic', 'anime_episodes_completed', 1535, 1, 0, 'achievements.ach.anime_death_note.title', 'achievements.ach.anime_death_note.desc'),
     ('anime_nagatoro', 'anime', 'game-icons:heart-plus', 50, 'global', 'rare', 'anime_episodes_completed', 42361, 1, 0, 'achievements.ach.anime_nagatoro.title', 'achievements.ach.anime_nagatoro.desc'),
     ('anime_elfen_lied', 'anime', 'game-icons:blood', 60, 'global', 'epic', 'anime_episodes_completed', 1836, 1, 0, 'achievements.ach.anime_elfen_lied.title', 'achievements.ach.anime_elfen_lied.desc'),

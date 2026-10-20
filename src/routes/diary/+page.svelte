@@ -22,7 +22,18 @@
   let entries: DiaryEntry[] = $state([]);
   let loading = $state(true);
   let currentPage = $state(1);
-  const PER_PAGE = 100;
+  let perPage = $state(100);
+
+  // Адаптивный размер страницы: 20 на мобилке, 100 на десктопе
+  function updatePerPage() {
+    if (typeof window === 'undefined') return;
+    const isMobile = window.innerWidth < 768;
+    const newPerPage = isMobile ? 20 : 100;
+    if (newPerPage !== perPage) {
+      perPage = newPerPage;
+      currentPage = 1; // сбрасываем на первую страницу при смене размера
+    }
+  }
 
   async function loadDiary() {
     try {
@@ -34,8 +45,8 @@
     }
   }
 
-  let totalPages = $derived(Math.max(1, Math.ceil(entries.length / PER_PAGE)));
-  let paginatedEntries = $derived(entries.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE));
+  let totalPages = $derived(Math.max(1, Math.ceil(entries.length / perPage)));
+  let paginatedEntries = $derived(entries.slice((currentPage - 1) * perPage, currentPage * perPage));
 
   function formatDate(dateStr: string) {
     try {
@@ -46,7 +57,12 @@
     }
   }
 
-  onMount(loadDiary);
+  onMount(() => {
+    loadDiary();
+    updatePerPage();
+    window.addEventListener('resize', updatePerPage);
+    return () => window.removeEventListener('resize', updatePerPage);
+  });
 </script>
 
 <PageHeader title={$t('diary.title')} subtitle={$t('diary.subtitle')} icon={BookOpen} />
@@ -60,35 +76,36 @@
     hint={$t('diary.empty_hint')}
   />
 {:else}
-  <div class="space-y-3">
+  <div class="space-y-2 md:space-y-3">
     {#each paginatedEntries as entry}
-      <div class="flex gap-4 p-4 bg-surface border border-border rounded-xl">
+      <div class="flex gap-3 md:gap-4 p-3 md:p-4 bg-surface border border-border rounded-xl">
         {#if entry.poster_url}
-          <img src={entry.poster_url} alt={entry.title} class="w-16 h-24 object-cover rounded-md shrink-0" />
+          <img src={entry.poster_url} alt={entry.title} class="w-12 h-18 md:w-16 md:h-24 object-cover rounded-md shrink-0" />
         {:else}
-          <div class="w-16 h-24 bg-ink-light rounded-md shrink-0 flex items-center justify-center text-zinc-600 text-[10px]">Нет</div>
+          <div class="w-12 h-18 md:w-16 md:h-24 bg-ink-light rounded-md shrink-0 flex items-center justify-center text-zinc-600 text-[10px]">Нет</div>
         {/if}
 
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
-              <p class="text-xs text-zinc-500 mb-1">{formatDate(entry.watched_at)}</p>
-              <h3 class="font-medium truncate">{entry.title}</h3>
+              <p class="text-[10px] md:text-xs text-zinc-500 mb-0.5 md:mb-1">{formatDate(entry.watched_at)}</p>
+              <h3 class="font-medium truncate text-sm md:text-base">{entry.title}</h3>
             </div>
             {#if entry.rating}
               <div class="flex items-center gap-1 text-gold shrink-0">
-                <Star size={14} fill="currentColor" />
-                <span class="text-sm font-medium">{entry.rating.toFixed(1)}</span>
+                <Star size={12} class="md:hidden" fill="currentColor" />
+                <Star size={14} class="hidden md:block" fill="currentColor" />
+                <span class="text-xs md:text-sm font-medium">{entry.rating.toFixed(1)}</span>
               </div>
             {/if}
           </div>
 
           {#if entry.is_rewatch}
-            <span class="inline-block mt-2 text-[10px] px-2 py-0.5 rounded bg-gold/10 border border-gold/30 text-gold uppercase tracking-wider">Пересмотр</span>
+            <span class="inline-block mt-1 md:mt-2 text-[9px] md:text-[10px] px-2 py-0.5 rounded bg-gold/10 border border-gold/30 text-gold uppercase tracking-wider">Пересмотр</span>
           {/if}
 
           {#if entry.notes}
-            <p class="text-sm text-zinc-400 mt-2 line-clamp-2">{entry.notes}</p>
+            <p class="text-xs md:text-sm text-zinc-400 mt-1 md:mt-2 line-clamp-2">{entry.notes}</p>
           {/if}
         </div>
       </div>

@@ -119,7 +119,21 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
             "keyword_or_company" => { let k = count_id_in_json_field(conn, cond_value, "keyword_ids")?; let c = count_id_in_json_field(conn, 420, "production_company_ids")?; k.max(c) >= required }
             "user_rating_with_low_tmdb" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE ut.rating >= 8.0 AND t.imdb_rating < 4.0", [], |r| r.get(0)).unwrap_or(0); c >= 1 }
             "ratings_1" => { let mut s2 = conn.prepare("SELECT rating FROM user_titles WHERE rating IS NOT NULL ORDER BY updated_at DESC LIMIT ?1").map_err(|e| e.to_string())?; let r: Vec<f64> = s2.query_map([required], |r| r.get(0)).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?; r.len() as i64 >= required && r.iter().all(|v| (*v - 1.0).abs() < 0.001) }
-            "daily_completed" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM (SELECT date(watched_at) AS d, COUNT(*) AS n FROM watch_entries GROUP BY date(watched_at) HAVING n >= ?1)", [required], |r| r.get(0)).unwrap_or(0); c > 0 }
+            "daily_completed" => {
+                let c: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM (
+                        SELECT date(we.watched_at) AS d, COUNT(DISTINCT ut.title_id) AS n
+                        FROM watch_entries we
+                        JOIN user_titles ut ON ut.id = we.user_title_id
+                        JOIN titles t ON t.id = ut.title_id
+                        WHERE t.type = 'movie' AND we.is_rewatch = 0
+                        GROUP BY date(we.watched_at)
+                        HAVING n >= ?1
+                    )",
+                    [cond_value], |r| r.get(0)
+                ).unwrap_or(0);
+                c > 0
+            }
             "night_watch" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM watch_entries WHERE CAST(strftime('%H', watched_at) AS INTEGER) >= 2 AND CAST(strftime('%H', watched_at) AS INTEGER) <= 5", [], |r| r.get(0)).unwrap_or(0); c >= 1 }
             "tv_episodes_completed" => {
                 let total: i64 = conn.query_row("SELECT COUNT(*) FROM episodes e JOIN seasons s ON s.id = e.season_id JOIN titles t ON t.id = s.title_id WHERE t.tmdb_id = ?1 AND t.type = 'tv'", [cond_value], |r| r.get(0)).unwrap_or(0);

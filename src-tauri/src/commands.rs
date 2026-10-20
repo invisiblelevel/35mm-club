@@ -154,18 +154,27 @@ pub async fn get_title_details(tmdb_id: i64, media_type: String, api_key: Option
 }
 
 #[tauri::command]
-pub fn set_avatar(app: tauri::AppHandle, db: State<Database>, source_path: String) -> Result<String, String> {
-    use std::fs; use std::path::Path; use tauri::Manager;
-    let src = Path::new(&source_path);
-    if !src.exists() { return Err("Файл не найден".to_string()); }
-    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+pub fn set_avatar(app: tauri::AppHandle, db: State<Database>, image_data: String) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose};
+    use std::fs;
+    use tauri::Manager;
+
+    let bytes = general_purpose::STANDARD.decode(&image_data)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+
+    let app_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     let avatars_dir = app_dir.join("avatars");
     fs::create_dir_all(&avatars_dir).map_err(|e| e.to_string())?;
-    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("png");
-    let dest = avatars_dir.join(format!("avatar.{}", ext));
-    fs::copy(src, &dest).map_err(|e| format!("Не удалось скопировать: {}", e))?;
+
+    let dest = avatars_dir.join("avatar.png");
+    fs::write(&dest, &bytes).map_err(|e| format!("Write error: {}", e))?;
+
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    conn.execute("UPDATE user_profile SET avatar_path = ?1 WHERE id = 1", [dest.to_string_lossy().to_string()]).map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE user_profile SET avatar_path = ?1 WHERE id = 1",
+        [dest.to_string_lossy().to_string()]
+    ).map_err(|e| e.to_string())?;
+
     Ok(dest.to_string_lossy().to_string())
 }
 

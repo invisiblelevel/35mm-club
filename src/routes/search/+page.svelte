@@ -37,7 +37,8 @@
   let selectedAnime: AnimeItem | null = $state(null);
   let lastUrlQ = '';
 
-  const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
+  const TMDB_IMG = 'https://image.tmdb.org/t/p/w200';
+  const TMDB_IMG_BIG = 'https://image.tmdb.org/t/p/w500';
 
   async function runSearch() {
     if (!query.trim()) {
@@ -46,20 +47,27 @@
     }
     loading = true;
     error = '';
+
+    // Запускаем три запроса параллельно. Каждый обновляет свой массив сразу, как только ответил.
+    const localPromise = invoke<LocalItem[]>('search_local_library', { query, contentType: null })
+      .then(res => { localResults = res; })
+      .catch(e => { console.error('local search failed:', e); });
+
+    const tmdbPromise = invoke<MovieItem[]>('search_movies', { query, mediaType: 'multi', apiKey: settings.tmdbKey || null, locale: $locale })
+      .then(res => {
+        tmdbResults = res.filter(item => {
+          const isAnime = item.original_language === 'ja' && item.genre_ids.includes(16);
+          return !isAnime;
+        });
+      })
+      .catch(e => { console.error('tmdb search failed:', e); });
+
+    const animePromise = invoke<AnimeItem[]>('search_anime', { query, locale: $locale })
+      .then(res => { animeResults = res; })
+      .catch(e => { console.error('anime search failed:', e); });
+
     try {
-      const localPromise = invoke<LocalItem[]>('search_local_library', { query, contentType: null }).catch(() => []);
-      const tmdbPromise = invoke<MovieItem[]>('search_movies', { query, mediaType: 'multi', apiKey: settings.tmdbKey || null, locale: $locale }).catch(() => []);
-      const animePromise = invoke<AnimeItem[]>('search_anime', { query, locale: $locale }).catch(() => []);
-
-      const [local, tmdb, anime] = await Promise.all([localPromise, tmdbPromise, animePromise]);
-
-      localResults = local;
-      animeResults = anime;
-
-      tmdbResults = tmdb.filter(item => {
-        const isAnime = item.original_language === 'ja' && item.genre_ids.includes(16);
-        return !isAnime;
-      });
+      await Promise.allSettled([localPromise, tmdbPromise, animePromise]);
     } catch (e) {
       error = String(e);
     } finally {
@@ -79,7 +87,15 @@
     runSearch();
   }
 
-  // Срабатывает при монтировании И при любой навигации (включая replaceState из топбара)
+  function imgFallback(e: Event) {
+    const img = e.currentTarget as HTMLImageElement;
+    img.style.display = 'none';
+    const parent = img.parentElement;
+    if (parent) {
+      parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-zinc-600"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 16l5-5 4 4 3-3 8 8"/></svg></div>';
+    }
+  }
+
   afterNavigate(({ to }) => {
     if (!to || to.url.pathname !== '/search') return;
     const q = to.url.searchParams.get('q') ?? '';
@@ -100,21 +116,21 @@
   });
 </script>
 
-<div class="space-y-6">
-  <h1 class="font-display text-3xl font-bold">{$t('search.title')}</h1>
+<div class="space-y-4 md:space-y-6">
+  <h1 class="font-display text-2xl md:text-3xl font-bold">{$t('search.title')}</h1>
 
-  <div class="flex gap-2">
+  <div class="flex flex-col sm:flex-row gap-2">
     <div class="relative flex-1">
       <Search size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
       <input
-        class="w-full pl-10 pr-4 py-3 bg-surface border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none transition-colors"
+        class="w-full pl-10 pr-4 py-2.5 md:py-3 bg-surface border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none transition-colors text-sm md:text-base"
         placeholder={$t('search.placeholder')}
         bind:value={query}
         onkeydown={(e) => e.key === 'Enter' && onSearchClick()}
       />
     </div>
     <button
-      class="px-8 py-3 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg transition-colors disabled:opacity-50"
+      class="px-6 py-2.5 md:py-3 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg transition-all disabled:opacity-50 text-sm md:text-base shrink-0"
       onclick={onSearchClick}
       disabled={loading}
     >{loading ? $t('search.loading') : $t('search.button')}</button>
@@ -128,25 +144,33 @@
 
   {#if query.trim() && localResults.length > 0}
     <section class="space-y-4">
-      <h2 class="font-display text-xl font-semibold flex items-center gap-2">
+      <h2 class="font-display text-lg md:text-xl font-semibold flex items-center gap-2">
         <Library size={18} class="text-gold" />
         {$t('search.in_library')} <span class="text-sm font-normal text-zinc-500">({localResults.length})</span>
       </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {#each localResults as item (item.id)}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+        {#each localResults as item, i (item.id)}
           <a href={`/title/${item.tmdb_id}?type=${item.type_field}`} class="block rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300">
-            {#if item.poster_path}
-              <div class="aspect-[2/3] overflow-hidden">
-                <img src={TMDB_IMG + item.poster_path} alt={item.title} class="w-full h-full object-cover" />
-              </div>
-            {:else}
-              <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={48} /></div>
-            {/if}
-            <div class="p-3">
-              <p class="text-sm font-medium truncate">{item.title}</p>
+            <div class="aspect-[2/3] bg-ink-light overflow-hidden">
+              {#if item.poster_path}
+                <img
+                  src={TMDB_IMG + item.poster_path}
+                  alt={item.title}
+                  loading={i < 6 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={i < 6 ? 'high' : 'low'}
+                  onerror={imgFallback}
+                  class="w-full h-full object-cover"
+                />
+              {:else}
+                <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
+              {/if}
+            </div>
+            <div class="p-2 md:p-3">
+              <p class="text-xs md:text-sm font-medium truncate">{item.title}</p>
               <div class="flex items-center justify-between mt-1">
-                <span class="text-xs text-zinc-500">{item.year ?? '—'}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold uppercase">{$t('status.' + item.status)}</span>
+                <span class="text-[10px] md:text-xs text-zinc-500">{item.year ?? '—'}</span>
+                <span class="text-[9px] md:text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold uppercase">{$t('status.' + item.status)}</span>
               </div>
             </div>
           </a>
@@ -157,26 +181,34 @@
 
   {#if query.trim() && tmdbResults.length > 0}
     <section class="space-y-4">
-      <h2 class="font-display text-xl font-semibold flex items-center gap-2">
+      <h2 class="font-display text-lg md:text-xl font-semibold flex items-center gap-2">
         <Search size={18} class="text-gold" />
         TMDB <span class="text-sm font-normal text-zinc-500">({tmdbResults.length})</span>
       </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {#each tmdbResults as item (item.tmdb_id)}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+        {#each tmdbResults as item, i (item.tmdb_id)}
           <button type="button" onclick={() => selectedTmdb = item} class="group text-left rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300 cursor-pointer">
-            {#if item.poster_url}
-              <div class="aspect-[2/3] overflow-hidden">
-                <img src={item.poster_url.startsWith('http') ? item.poster_url : TMDB_IMG + item.poster_url} alt={item.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              </div>
-            {:else}
-              <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={48} /></div>
-            {/if}
-            <div class="p-3">
-              <p class="text-sm font-medium truncate">{item.title}</p>
+            <div class="aspect-[2/3] bg-ink-light overflow-hidden">
+              {#if item.poster_url}
+                <img
+                  src={item.poster_url.startsWith('http') ? item.poster_url.replace('/w500/', '/w200/') : TMDB_IMG + item.poster_url}
+                  alt={item.title}
+                  loading={i < 6 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={i < 6 ? 'high' : 'low'}
+                  onerror={imgFallback}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              {:else}
+                <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
+              {/if}
+            </div>
+            <div class="p-2 md:p-3">
+              <p class="text-xs md:text-sm font-medium truncate">{item.title}</p>
               <div class="flex items-center justify-between mt-1">
-                <span class="text-xs text-zinc-500">{item.year ?? '—'}</span>
+                <span class="text-[10px] md:text-xs text-zinc-500">{item.year ?? '—'}</span>
                 {#if item.rating}
-                  <span class="flex items-center gap-1 text-xs text-gold"><Star size={12} fill="currentColor" />{item.rating.toFixed(1)}</span>
+                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} class="md:size-3" fill="currentColor" />{item.rating.toFixed(1)}</span>
                 {/if}
               </div>
             </div>
@@ -188,26 +220,34 @@
 
   {#if query.trim() && animeResults.length > 0}
     <section class="space-y-4">
-      <h2 class="font-display text-xl font-semibold flex items-center gap-2">
+      <h2 class="font-display text-lg md:text-xl font-semibold flex items-center gap-2">
         <Sparkles size={18} class="text-gold" />
         Аниме <span class="text-sm font-normal text-zinc-500">({animeResults.length})</span>
       </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {#each animeResults as item (item.mal_id)}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+        {#each animeResults as item, i (item.mal_id)}
           <button type="button" onclick={() => selectedAnime = item} class="group text-left rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300 cursor-pointer">
-            {#if item.cover_url}
-              <div class="aspect-[2/3] overflow-hidden">
-                <img src={item.cover_url} alt={item.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              </div>
-            {:else}
-              <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={48} /></div>
-            {/if}
-            <div class="p-3">
-              <p class="text-sm font-medium truncate">{item.title}</p>
+            <div class="aspect-[2/3] bg-ink-light overflow-hidden">
+              {#if item.cover_url}
+                <img
+                  src={item.cover_url}
+                  alt={item.title}
+                  loading={i < 6 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchpriority={i < 6 ? 'high' : 'low'}
+                  onerror={imgFallback}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              {:else}
+                <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
+              {/if}
+            </div>
+            <div class="p-2 md:p-3">
+              <p class="text-xs md:text-sm font-medium truncate">{item.title}</p>
               <div class="flex items-center justify-between mt-1">
-                <span class="text-xs text-zinc-500">{item.year ?? '—'}</span>
+                <span class="text-[10px] md:text-xs text-zinc-500">{item.year ?? '—'}</span>
                 {#if item.average_score}
-                  <span class="flex items-center gap-1 text-xs text-gold"><Star size={12} fill="currentColor" />{item.average_score.toFixed(1)}</span>
+                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} class="md:size-3" fill="currentColor" />{item.average_score.toFixed(1)}</span>
                 {/if}
               </div>
             </div>

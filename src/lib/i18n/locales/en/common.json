@@ -57,7 +57,8 @@
     "button": "Search",
     "loading": "...",
     "empty": "Nothing found",
-    "no_poster": "No poster"
+    "no_poster": "No poster",
+	"in_library": "In library"
   },
   "common": {
     "save": "Save",
@@ -108,7 +109,8 @@
     "empty": "No achievements yet",
     "empty_hint": "Watch movies — earn rewards",
     "unlocked_at": "Unlocked {date}",
-    "secret": "Secret achievement"
+    "secret": "Secret achievement",
+	"toast_title": "Achievement unlocked!"
   },
   "profile": {
     "title": "Profile",
@@ -229,6 +231,8 @@
     "episodes": "episodes",
     "watched": "Watched",
     "episodes_not_found": "No episodes found",
-    "add_to_collection": "Add to collection"
+    "add_to_collection": "Add to collection",
+	"progress": "Watch progress",
+"fully_watched": "Fully watched!"
   }
 }

@@ -57,7 +57,8 @@
     "button": "搜索",
     "loading": "...",
     "empty": "未找到结果",
-    "no_poster": "无海报"
+    "no_poster": "无海报",
+	"in_library": "在媒体库中"
   },
   "common": {
     "save": "保存",
@@ -108,7 +109,8 @@
     "empty": "尚未获得成就",
     "empty_hint": "看电影——赢奖励",
     "unlocked_at": "解锁于 {date}",
-    "secret": "隐藏成就"
+    "secret": "隐藏成就",
+	"toast_title": "成就解锁！"
   },
   "profile": {
     "title": "个人资料",
@@ -229,6 +231,8 @@
     "episodes": "集",
     "watched": "已观看",
     "episodes_not_found": "未找到剧集",
-    "add_to_collection": "添加到收藏集"
+    "add_to_collection": "添加到收藏集",
+	"progress": "观看进度",
+"fully_watched": "已全部看完！"
   }
 }

@@ -192,7 +192,7 @@
 </script>
 
 <div class="max-w-6xl mx-auto">
-  <button onclick={() => history.back()} class="flex items-center gap-2 text-sm text-zinc-400 hover:text-gold transition-colors mb-6">
+  <button onclick={() => history.back()} class="flex items-center gap-2 text-sm text-zinc-400 hover:text-gold transition-colors mb-4 md:mb-6">
     <ArrowLeft size={16} /> {$t('common.back')}
   </button>
 
@@ -201,36 +201,36 @@
   {:else if error}
     <div class="p-4 rounded-lg bg-red-950/50 border border-red-800 text-sm text-red-200"><pre class="whitespace-pre-wrap">{error}</pre></div>
   {:else if details}
-    <div class="relative rounded-2xl overflow-hidden mb-8">
+    <div class="relative rounded-2xl overflow-hidden mb-6 md:mb-8">
       {#if details.backdrop_url}
-        <div class="absolute inset-0">
+        <div class="absolute inset-0 hidden md:block">
           <img src={details.backdrop_url} alt="" class="w-full h-full object-cover" />
           <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/40"></div>
         </div>
       {/if}
 
-      <div class="relative flex gap-8 p-8">
+      <div class="relative flex flex-col md:flex-row gap-4 md:gap-8 p-4 md:p-8">
         {#if details.poster_url}
-          <img src={details.poster_url} alt={details.title} class="w-56 h-84 object-cover rounded-xl shadow-2xl shrink-0" />
+          <img src={details.poster_url} alt={details.title} class="w-full md:w-56 h-48 md:h-84 object-cover rounded-xl shadow-2xl shrink-0" />
         {:else}
-          <div class="w-56 h-84 bg-ink-light rounded-xl flex items-center justify-center text-zinc-600 shrink-0"><Film size={48} /></div>
+          <div class="w-full md:w-56 h-48 md:h-84 bg-ink-light rounded-xl flex items-center justify-center text-zinc-600 shrink-0"><Film size={48} /></div>
         {/if}
 
-        <div class="flex-1 min-w-0 py-4">
-          <h1 class="font-display text-4xl font-bold mb-3">{details.title}</h1>
+        <div class="flex-1 min-w-0 py-0 md:py-4">
+          <h1 class="font-display text-2xl md:text-4xl font-bold mb-2 md:mb-3">{details.title}</h1>
 
-          <div class="flex items-center gap-4 text-sm text-zinc-400 mb-4 flex-wrap">
+          <div class="flex items-center gap-3 md:gap-4 text-sm text-zinc-400 mb-3 md:mb-4 flex-wrap">
             {#if details.year}<span>{details.year}</span>{/if}
             {#if details.runtime}<span class="flex items-center gap-1"><Clock size={14} /> {details.runtime} {$t('title_page.minutes')}</span>{/if}
             {#if details.rating}<span class="flex items-center gap-1 text-gold"><Star size={14} fill="currentColor" /> {details.rating.toFixed(1)}</span>{/if}
           </div>
 
-          <div class="mb-6 p-4 rounded-xl bg-surface/80 border border-border">
+          <div class="mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-surface/80 border border-border">
             <p class="text-xs uppercase tracking-wider text-zinc-500 mb-2">{$t('title_page.your_rating')}</p>
             {#if !userData?.user_title_id}
               <p class="text-sm text-zinc-500">{$t('title_page.add_to_rate')}</p>
             {:else}
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 flex-wrap">
                 <div class="flex items-center gap-0.5">
                   {#each Array(10) as _, i}
                     {@const starFill = (() => {
@@ -241,9 +241,13 @@
                       return 0;
                     })()}
                     <div class="relative" onmouseleave={() => hoveredStar = 0}>
-                      <Star size={18} class="text-zinc-600" />
+                      <Star size={16} class="text-zinc-600 md:hidden" />
+                      <Star size={18} class="text-zinc-600 hidden md:block" />
                       {#if starFill > 0}
-                        <div class="absolute inset-0 overflow-hidden pointer-events-none" style="width: {starFill}%"><Star size={18} fill="currentColor" class="text-gold" /></div>
+                        <div class="absolute inset-0 overflow-hidden pointer-events-none" style="width: {starFill}%">
+                          <Star size={16} fill="currentColor" class="text-gold md:hidden" />
+                          <Star size={18} fill="currentColor" class="text-gold hidden md:block" />
+                        </div>
                       {/if}
                       <button type="button" disabled={savingRating} onclick={() => setRating(i + 0.5)} onmouseenter={() => hoveredStar = i + 0.5} class="absolute inset-y-0 left-0 w-1/2 disabled:opacity-50" aria-label={`Оценка ${i + 0.5}`}></button>
                       <button type="button" disabled={savingRating} onclick={() => setRating(i + 1.0)} onmouseenter={() => hoveredStar = i + 1.0} class="absolute inset-y-0 right-0 w-1/2 disabled:opacity-50" aria-label={`Оценка ${i + 1.0}`}></button>
@@ -261,11 +265,11 @@
           </div>
 
           {#if userData?.user_title_id}
-            <div class="mb-6">
+            <div class="mb-4 md:mb-6">
               <button
                 type="button"
                 onclick={() => showCollections = true}
-                class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-border text-sm text-zinc-300 hover:border-gold hover:text-gold transition-colors"
+                class="flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2.5 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.98] transition-all"
               >
                 <FolderPlus size={16} />
                 {$t('title_page.add_to_collection')}
@@ -274,7 +278,7 @@
           {/if}
 
           {#if details.genres.length > 0}
-            <div class="flex flex-wrap gap-2 mb-6">
+            <div class="flex flex-wrap gap-2 mb-3 md:mb-6">
               {#each details.genres as genre}
                 <span class="px-3 py-1 rounded-full bg-gold/10 border border-gold/30 text-xs text-gold">{genre}</span>
               {/each}
@@ -282,11 +286,11 @@
           {/if}
 
           {#if details.overview}
-            <p class="text-zinc-300 leading-relaxed mb-6 max-w-2xl">{details.overview}</p>
+            <p class="text-zinc-300 leading-relaxed mb-4 md:mb-6 max-w-2xl text-sm md:text-base">{details.overview}</p>
           {/if}
 
           {#if details.trailer_key}
-            <a href={`https://www.youtube.com/watch?v=${details.trailer_key}`} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg transition-colors">
+            <a href={`https://www.youtube.com/watch?v=${details.trailer_key}`} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full md:w-auto px-5 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg transition-all">
               <ExternalLink size={16} /> {$t('title_page.trailer')}
             </a>
           {/if}
@@ -295,8 +299,8 @@
     </div>
 
     {#if isTv && userData?.user_title_id && seasons.length > 0}
-      <div class="mb-8">
-        <h2 class="font-display text-2xl font-bold mb-4">{$t('title_page.seasons_and_episodes')}</h2>
+      <div class="mb-6 md:mb-8">
+        <h2 class="font-display text-lg md:text-2xl font-bold mb-3 md:mb-4">{$t('title_page.seasons_and_episodes')}</h2>
         <div class="space-y-2">
           {#each seasons as season}
             {@const isOpen = openSeason === season.season_number}
@@ -304,12 +308,12 @@
             {@const watched = isLoaded ? watchedCount(season.season_number) : season.watched_count}
 
             <div class="bg-surface border border-border rounded-xl overflow-hidden">
-              <button type="button" onclick={() => toggleSeason(season.season_number)} class="w-full flex items-center gap-4 p-4 hover:bg-ink-light/50 transition-colors text-left">
+              <button type="button" onclick={() => toggleSeason(season.season_number)} class="w-full flex items-center gap-3 md:gap-4 p-3 md:p-4 hover:bg-ink-light/50 transition-colors text-left">
                 <div class="shrink-0 text-zinc-400">
-                  {#if isOpen}<ChevronDown size={20} />{:else}<ChevronRight size={20} />{/if}
+                  {#if isOpen}<ChevronDown size={18} />{:else}<ChevronRight size={18} />{/if}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-semibold text-zinc-100">
+                  <p class="font-semibold text-zinc-100 text-sm md:text-base truncate">
                     {season.name ?? `${$t('title_page.season')} ${season.season_number}`}
                   </p>
                   <p class="text-xs text-zinc-500">
@@ -329,11 +333,11 @@
                   {:else if seasonEpisodes[season.season_number]?.length > 0}
                     <div class="divide-y divide-border">
                       {#each seasonEpisodes[season.season_number] as ep}
-                        <button type="button" onclick={() => toggleEpisode(season.season_number, ep)} class="w-full flex items-center gap-4 p-3 hover:bg-ink-light/50 transition-colors text-left">
+                        <button type="button" onclick={() => toggleEpisode(season.season_number, ep)} class="w-full flex items-center gap-3 md:gap-4 p-3 hover:bg-ink-light/50 transition-colors text-left">
                           <div class="shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors {ep.watched ? 'bg-gold border-gold' : 'border-zinc-600'}">
                             {#if ep.watched}<Check size={14} class="text-ink" />{/if}
                           </div>
-                          <div class="shrink-0 text-xs text-zinc-500 font-mono w-10">{ep.episode_number}.</div>
+                          <div class="shrink-0 text-xs text-zinc-500 font-mono w-8 md:w-10">{ep.episode_number}.</div>
                           <div class="flex-1 min-w-0">
                             <p class="text-sm text-zinc-200 truncate {ep.watched ? 'opacity-60' : ''}">
                               {ep.name ?? `${$t('title_page.episode')} ${ep.episode_number}`}
@@ -355,7 +359,7 @@
     {/if}
 
     {#if details.director}
-      <div class="mb-6">
+      <div class="mb-4 md:mb-6">
         <span class="text-xs uppercase tracking-wider text-zinc-500">{$t('title_page.director')}</span>
         <p class="text-zinc-200 font-medium">{details.director}</p>
       </div>
@@ -363,18 +367,18 @@
 
     {#if details.cast.length > 0}
       <div>
-        <h2 class="font-display text-2xl font-bold mb-4">{$t('title_page.cast')}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <h2 class="font-display text-lg md:text-2xl font-bold mb-3 md:mb-4">{$t('title_page.cast')}</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4">
           {#each details.cast as member}
             <div class="rounded-xl bg-surface border border-border overflow-hidden">
               {#if member.profile_url}
                 <div class="aspect-[2/3] overflow-hidden bg-ink-light"><img src={member.profile_url} alt={member.name} class="w-full h-full object-cover" /></div>
               {:else}
-                <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={32} /></div>
+                <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={24} /></div>
               {/if}
-              <div class="p-3">
-                <p class="text-sm font-medium truncate">{member.name}</p>
-                {#if member.character}<p class="text-xs text-zinc-500 truncate">{member.character}</p>{/if}
+              <div class="p-2 md:p-3">
+                <p class="text-xs md:text-sm font-medium truncate">{member.name}</p>
+                {#if member.character}<p class="text-[10px] md:text-xs text-zinc-500 truncate">{member.character}</p>{/if}
               </div>
             </div>
           {/each}
@@ -385,35 +389,35 @@
 </div>
 
 {#if showCollections}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm" onclick={(e) => e.target === e.currentTarget && (showCollections = false)} role="presentation">
-    <div class="w-full max-w-md bg-surface border border-border rounded-xl p-6" onclick={(e) => e.stopPropagation()}>
-      <h2 class="font-display text-xl font-bold mb-4">{$t('collections.title')}</h2>
+  <div class="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-5 bg-black/70 backdrop-blur-sm" onclick={(e) => e.target === e.currentTarget && (showCollections = false)} role="presentation">
+    <div class="w-full max-w-md bg-surface border border-border rounded-t-2xl md:rounded-xl p-4 md:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6 max-h-[85vh] overflow-y-auto" onclick={(e) => e.stopPropagation()}>
+      <h2 class="font-display text-lg md:text-xl font-bold mb-4">{$t('collections.title')}</h2>
       {#if allCollections.length === 0}
         <div class="text-center py-6">
           <p class="text-zinc-400 text-sm mb-3">{$t('collections.empty')}</p>
           <p class="text-zinc-500 text-xs mb-4">{$t('collections.empty_hint')}</p>
           <button
             onclick={() => { showCollections = false; goto('/collections'); }}
-            class="px-4 py-2 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg text-sm"
+            class="px-4 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg text-sm transition-all"
           >{$t('collections.go_to')}</button>
         </div>
       {:else}
-        <div class="space-y-2 mb-4 max-h-64 overflow-y-auto">
+        <div class="space-y-2 mb-4">
           {#each allCollections as c}
-            <label class="flex items-center gap-3 p-3 rounded-lg bg-ink-light border border-border hover:border-gold/50 cursor-pointer">
+            <label class="flex items-center gap-3 p-3 rounded-lg bg-ink-light border border-border hover:border-gold/50 cursor-pointer active:scale-[0.99] transition-all">
               <input
                 type="checkbox"
                 checked={titleCollections.includes(c.id)}
                 onchange={() => toggleCollection(c.id)}
                 class="w-4 h-4 accent-gold"
               />
-              <span class="text-sm text-zinc-200 flex-1">{c.name}</span>
-              <span class="text-xs text-zinc-500">{c.item_count}</span>
+              <span class="text-sm text-zinc-200 flex-1 truncate">{c.name}</span>
+              <span class="text-xs text-zinc-500 shrink-0">{c.item_count}</span>
             </label>
           {/each}
         </div>
       {/if}
-      <button onclick={() => showCollections = false} class="w-full px-4 py-2 bg-gold hover:bg-gold-light text-ink font-medium rounded-lg mt-2">
+      <button onclick={() => showCollections = false} class="w-full px-4 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg mt-2 transition-all">
         {$t('common.close')}
       </button>
     </div>
