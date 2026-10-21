@@ -1,10 +1,12 @@
 use crate::db::Database;
 use crate::models::*;
 use crate::achievements::{award_xp_internal, add_watch_minutes, check_achievements_internal, calculate_level, xp_threshold_for_level, rank_name_for_level};
+use crate::sync::log;
 use tauri::State;
+use std::sync::Arc;
 
 #[tauri::command]
-pub fn get_profile(db: State<Database>) -> Result<UserProfile, String> {
+pub fn get_profile(db: State<'_, Arc<Database>>) -> Result<UserProfile, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let (username, avatar_path, remote_id, xp, total_watch_minutes, created_at) = conn.query_row("SELECT username, avatar_path, remote_id, xp, total_watch_minutes, created_at FROM user_profile WHERE id = 1", [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?))).map_err(|e| e.to_string())?;
     let level = calculate_level(xp);
@@ -16,28 +18,32 @@ pub fn get_profile(db: State<Database>) -> Result<UserProfile, String> {
 }
 
 #[tauri::command]
-pub fn update_profile(db: State<Database>, username: Option<String>, avatar_path: Option<String>) -> Result<(), String> {
+pub fn update_profile(db: State<'_, Arc<Database>>, username: Option<String>, avatar_path: Option<String>) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    if let Some(name) = username { conn.execute("UPDATE user_profile SET username = ?1 WHERE id = 1", [name]).map_err(|e| e.to_string())?; }
-    if let Some(path) = avatar_path { conn.execute("UPDATE user_profile SET avatar_path = ?1 WHERE id = 1", [path]).map_err(|e| e.to_string())?; }
+    if let Some(name) = username { conn.execute("UPDATE user_profile SET username = ?1, updated_at = datetime('now') WHERE id = 1", [name]).map_err(|e| e.to_string())?; }
+    if let Some(path) = avatar_path { conn.execute("UPDATE user_profile SET avatar_path = ?1, updated_at = datetime('now') WHERE id = 1", [path]).map_err(|e| e.to_string())?; }
+    let _ = log::record_profile(&conn);
     Ok(())
 }
 
 #[tauri::command]
-pub fn award_xp(db: State<Database>, amount: i64) -> Result<i64, String> {
+pub fn award_xp(db: State<'_, Arc<Database>>, amount: i64) -> Result<i64, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    award_xp_internal(&conn, amount)
+    let result = award_xp_internal(&conn, amount);
+    let _ = log::record_profile(&conn);
+    result
 }
 
 #[tauri::command]
-pub fn reset_all_data(db: State<Database>) -> Result<(), String> {
+pub fn reset_all_data(db: State<'_, Arc<Database>>) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    conn.execute_batch("DELETE FROM user_episodes; DELETE FROM episodes; DELETE FROM seasons; DELETE FROM user_showcase; DELETE FROM user_achievements; DELETE FROM user_ribbons; DELETE FROM watch_entries; DELETE FROM collection_items; DELETE FROM collections; DELETE FROM user_titles; DELETE FROM titles; UPDATE user_profile SET xp = 0, level = 1, total_watch_minutes = 0, avatar_path = NULL WHERE id = 1;").map_err(|e| e.to_string())?;
+    conn.execute_batch("DELETE FROM user_episodes; DELETE FROM episodes; DELETE FROM seasons; DELETE FROM user_showcase; DELETE FROM user_achievements; DELETE FROM user_ribbons; DELETE FROM watch_entries; DELETE FROM collection_items; DELETE FROM collections; DELETE FROM user_titles; DELETE FROM titles; UPDATE user_profile SET xp = 0, level = 1, total_watch_minutes = 0, avatar_path = NULL, updated_at = datetime('now') WHERE id = 1;").map_err(|e| e.to_string())?;
+    let _ = log::record_profile(&conn);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_library(db: State<Database>, content_type: String) -> Result<Vec<Title>, String> {
+pub fn get_library(db: State<'_, Arc<Database>>, content_type: String) -> Result<Vec<Title>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT t.id, t.tmdb_id, t.title, t.type, t.year, t.poster_path, ut.status, ut.rating, ut.added_at FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.type = ?1 ORDER BY ut.added_at DESC").map_err(|e| e.to_string())?;
     let titles = stmt.query_map([content_type], |row| Ok(Title { id: row.get(0)?, tmdb_id: row.get(1)?, title: row.get(2)?, type_field: row.get(3)?, year: row.get(4)?, poster_path: row.get(5)?, status: row.get(6)?, rating: row.get(7)?, added_at: row.get(8)? })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
@@ -45,7 +51,7 @@ pub fn get_library(db: State<Database>, content_type: String) -> Result<Vec<Titl
 }
 
 #[tauri::command]
-pub fn search_local_library(db: State<Database>, query: String, content_type: Option<String>) -> Result<Vec<Title>, String> {
+pub fn search_local_library(db: State<'_, Arc<Database>>, query: String, content_type: Option<String>) -> Result<Vec<Title>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let pattern = format!("%{}%", query);
     let (sql, params_vec): (&str, Vec<Box<dyn rusqlite::ToSql>>) = match content_type {
@@ -59,7 +65,7 @@ pub fn search_local_library(db: State<Database>, query: String, content_type: Op
 }
 
 #[tauri::command]
-pub fn get_achievements(db: State<Database>) -> Result<Vec<Achievement>, String> {
+pub fn get_achievements(db: State<'_, Arc<Database>>) -> Result<Vec<Achievement>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT a.id, a.code, a.category, a.icon, a.xp_reward, a.scope, a.tier, a.is_secret, a.title_key, a.description_key, ua.unlocked_at FROM achievements a LEFT JOIN user_achievements ua ON ua.achievement_id = a.id ORDER BY ua.unlocked_at DESC NULLS LAST, a.id ASC").map_err(|e| e.to_string())?;
     let achievements = stmt.query_map([], |row| {
@@ -70,21 +76,33 @@ pub fn get_achievements(db: State<Database>) -> Result<Vec<Achievement>, String>
 }
 
 #[tauri::command]
-pub fn get_user_title_data(db: State<Database>, tmdb_id: i64, type_field: String) -> Result<UserTitleData, String> {
+pub fn get_user_title_data(db: State<'_, Arc<Database>>, tmdb_id: i64, type_field: String) -> Result<UserTitleData, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let result = conn.query_row("SELECT ut.id, ut.status, ut.rating, ut.added_at FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1 AND t.type = ?2 LIMIT 1", rusqlite::params![tmdb_id, type_field], |row| Ok(UserTitleData { user_title_id: Some(row.get(0)?), status: Some(row.get(1)?), rating: row.get(2)?, added_at: row.get(3)? })).ok();
-    Ok(result.unwrap_or(UserTitleData { user_title_id: None, status: None, rating: None, added_at: None }))
+    let result = conn.query_row(
+        "SELECT ut.id, ut.status, ut.rating, ut.notes, ut.added_at FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1 AND t.type = ?2 LIMIT 1",
+        rusqlite::params![tmdb_id, type_field],
+        |row| Ok(UserTitleData {
+            user_title_id: Some(row.get(0)?),
+            status: Some(row.get(1)?),
+            rating: row.get(2)?,
+            notes: row.get(3)?,
+            added_at: row.get(4)?,
+        })
+    ).ok();
+    Ok(result.unwrap_or(UserTitleData { user_title_id: None, status: None, rating: None, notes: None, added_at: None }))
 }
 
 #[tauri::command]
-pub fn update_rating(db: State<Database>, user_title_id: i64, rating: Option<f64>) -> Result<Vec<Achievement>, String> {
+pub fn update_rating(db: State<'_, Arc<Database>>, user_title_id: i64, rating: Option<f64>) -> Result<Vec<Achievement>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("UPDATE user_titles SET rating = ?1, updated_at = datetime('now') WHERE id = ?2", rusqlite::params![rating, user_title_id]).map_err(|e| e.to_string())?;
+    let _ = log::record_user_title(&conn, user_title_id);
+    let _ = log::record_profile(&conn);
     check_achievements_internal(&conn)
 }
 
 #[tauri::command]
-pub fn add_to_library(db: State<Database>, payload: AddToLibraryPayload) -> Result<Vec<Achievement>, String> {
+pub fn add_to_library(db: State<'_, Arc<Database>>, payload: AddToLibraryPayload) -> Result<Vec<Achievement>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let existing: Option<i64> = conn.query_row("SELECT id FROM titles WHERE tmdb_id = ?1 AND type = ?2 AND title = ?3", rusqlite::params![payload.tmdb_id, payload.type_field, payload.title], |row| row.get(0)).ok();
 
@@ -139,7 +157,12 @@ pub fn add_to_library(db: State<Database>, payload: AddToLibraryPayload) -> Resu
         }
         new_id
     };
-    let _ = user_title_id;
+
+    let _ = log::record_title(&conn, title_id);
+    let _ = log::record_title_metadata(&conn, title_id);
+    let _ = log::record_user_title(&conn, user_title_id);
+    let _ = log::record_profile(&conn);
+
     check_achievements_internal(&conn)
 }
 
@@ -154,7 +177,7 @@ pub async fn get_title_details(tmdb_id: i64, media_type: String, api_key: Option
 }
 
 #[tauri::command]
-pub fn set_avatar(app: tauri::AppHandle, db: State<Database>, image_data: String) -> Result<String, String> {
+pub fn set_avatar(app: tauri::AppHandle, db: State<'_, Arc<Database>>, image_data: String) -> Result<String, String> {
     use base64::{Engine as _, engine::general_purpose};
     use std::fs;
     use tauri::Manager;
@@ -171,16 +194,17 @@ pub fn set_avatar(app: tauri::AppHandle, db: State<Database>, image_data: String
 
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE user_profile SET avatar_path = ?1 WHERE id = 1",
+        "UPDATE user_profile SET avatar_path = ?1, updated_at = datetime('now') WHERE id = 1",
         [dest.to_string_lossy().to_string()]
     ).map_err(|e| e.to_string())?;
+    let _ = log::record_profile(&conn);
 
     Ok(dest.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 pub async fn refresh_metadata(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     api_key: Option<String>,
     locale: String,
 ) -> Result<usize, String> {
@@ -227,7 +251,7 @@ pub async fn refresh_metadata(
 
 #[tauri::command]
 pub async fn refresh_titles_language(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     api_key: Option<String>,
     locale: String,
 ) -> Result<usize, String> {
@@ -259,7 +283,7 @@ pub async fn refresh_titles_language(
 
 #[tauri::command]
 pub async fn ensure_title_language(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     tmdb_id: i64,
     type_field: String,
     api_key: Option<String>,
@@ -285,10 +309,8 @@ pub async fn ensure_title_language(
 
 #[tauri::command]
 pub async fn search_anime(query: String, locale: String) -> Result<Vec<crate::shikimori::ShikiSearchItem>, String> {
-    // 1. Shikimori (основной источник, учитывает локаль)
     match crate::shikimori::search_anime(&query, 20, &locale).await {
         Ok(mut results) if !results.is_empty() => {
-            // Если локаль не русская — подтягиваем английские описания из AniList
             if locale != "ru" {
                 for item in results.iter_mut().take(10) {
                     if let Some(en_desc) = crate::anilist::get_description_by_mal_id(item.mal_id).await {
@@ -301,7 +323,6 @@ pub async fn search_anime(query: String, locale: String) -> Result<Vec<crate::sh
         _ => {}
     }
 
-    // 2. Fallback: AniList
     let anilist_results = crate::anilist::search_anime(&query, 1, 20).await.unwrap_or_default();
     Ok(anilist_results.into_iter().map(|a| {
         crate::shikimori::ShikiSearchItem {
@@ -325,7 +346,6 @@ pub async fn get_anime_details(
 ) -> Result<crate::shikimori::ShikiAnimeDetails, String> {
     let mut details = crate::shikimori::get_anime_details(mal_id, &locale).await?;
 
-    // Если локаль не русская, пробуем взять английское описание из AniList
     if locale != "ru" {
         if let Some(en_desc) = crate::anilist::get_description_by_mal_id(mal_id).await {
             details.description = Some(en_desc);
@@ -337,7 +357,7 @@ pub async fn get_anime_details(
 
 #[tauri::command]
 pub async fn add_anime_to_library(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     payload: AddAnimePayload,
 ) -> Result<Vec<Achievement>, String> {
     let mal_id = payload.mal_id.ok_or_else(|| "mal_id обязателен".to_string())?;
@@ -380,7 +400,6 @@ pub async fn add_anime_to_library(
         _ => 0,
     };
 
-    // ФИКС: если completed — берём episodes_total из titles, а не из payload (payload может быть null).
     let total_from_db: Option<i64> = conn.query_row(
         "SELECT episodes_total FROM titles WHERE id = ?1", [title_id], |r| r.get(0)
     ).ok().flatten();
@@ -434,11 +453,21 @@ pub async fn add_anime_to_library(
         }
     }
 
+    let _ = log::record_title(&conn, title_id);
+    if let Ok(ut_id) = conn.query_row(
+        "SELECT id FROM user_titles WHERE title_id = ?1",
+        [title_id],
+        |r| r.get::<_, i64>(0),
+    ) {
+        let _ = log::record_user_title(&conn, ut_id);
+    }
+    let _ = log::record_profile(&conn);
+
     check_achievements_internal(&conn)
 }
 
 #[tauri::command]
-pub fn get_anime_progress(db: State<Database>, mal_id: i64) -> Result<i64, String> {
+pub fn get_anime_progress(db: State<'_, Arc<Database>>, mal_id: i64) -> Result<i64, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let result: Option<i64> = conn.query_row(
         "SELECT ut.anime_episodes_watched
@@ -453,19 +482,17 @@ pub fn get_anime_progress(db: State<Database>, mal_id: i64) -> Result<i64, Strin
 
 #[tauri::command]
 pub fn update_anime_progress(
-    db: State<Database>,
+    db: State<'_, Arc<Database>>,
     mal_id: i64,
     watched: i64,
 ) -> Result<Vec<Achievement>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    // 1. Ищем само аниме (без JOIN с user_titles)
     let (title_id, episodes_total): (i64, Option<i64>) = conn.query_row(
         "SELECT id, episodes_total FROM titles WHERE tmdb_id = ?1 AND type = 'anime' LIMIT 1",
         [mal_id], |r| Ok((r.get(0)?, r.get(1)?))
     ).map_err(|_| "Аниме не найдено в базе".to_string())?;
 
-    // 2. Проверяем, есть ли оно в user_titles
     let old_watched: Option<i64> = conn.query_row(
         "SELECT anime_episodes_watched FROM user_titles WHERE title_id = ?1",
         [title_id], |r| r.get(0)
@@ -473,7 +500,6 @@ pub fn update_anime_progress(
 
     let old_watched = old_watched.unwrap_or(0);
 
-    // 3. Если записи нет — создаем её
     if old_watched == 0 {
         conn.execute(
             "INSERT OR IGNORE INTO user_titles (title_id, status, anime_episodes_watched) VALUES (?1, 'watching', 0)",
@@ -515,18 +541,20 @@ pub fn update_anime_progress(
         crate::achievements::award_xp_internal(&conn, 25)?;
     }
 
+    let _ = log::record_user_title(&conn, title_id);
+    let _ = log::record_profile(&conn);
+
     check_achievements_internal(&conn)
 }
 
 use serde_json::{json, Value};
 
 #[tauri::command]
-pub fn export_data(db: State<Database>) -> Result<String, String> {
+pub fn export_data(db: State<'_, Arc<Database>>) -> Result<String, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
     let mut data = serde_json::Map::new();
 
-    // 1. Профиль
     let profile: Value = conn.query_row(
         "SELECT username, level, xp, total_watch_minutes, created_at FROM user_profile WHERE id = 1",
         [], |r| Ok(json!({
@@ -539,7 +567,6 @@ pub fn export_data(db: State<Database>) -> Result<String, String> {
     ).map_err(|e| e.to_string())?;
     data.insert("profile".to_string(), profile);
 
-    // 2. Тайтлы (библиотека)
     let mut stmt = conn.prepare(
         "SELECT t.tmdb_id, t.anilist_id, t.type, t.title, t.original_title, t.year, t.poster_path,
                 t.overview, t.imdb_rating, t.runtime, t.language, t.episodes_total, t.anime_format,
@@ -569,7 +596,6 @@ pub fn export_data(db: State<Database>) -> Result<String, String> {
     }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
     data.insert("titles".to_string(), json!(titles));
 
-    // 3. Ачивки
     let mut stmt = conn.prepare(
         "SELECT a.code, ua.unlocked_at FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id"
     ).map_err(|e| e.to_string())?;
@@ -579,7 +605,6 @@ pub fn export_data(db: State<Database>) -> Result<String, String> {
     }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
     data.insert("achievements".to_string(), json!(achievements));
 
-    // 4. Дневник
     let mut stmt = conn.prepare(
         "SELECT we.watched_at, we.rating, we.notes, we.is_rewatch, t.tmdb_id
          FROM watch_entries we
@@ -595,7 +620,6 @@ pub fn export_data(db: State<Database>) -> Result<String, String> {
     }))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
     data.insert("diary".to_string(), json!(diary));
 
-    // 5. Коллекции
     let mut stmt = conn.prepare("SELECT id, name, description FROM collections").map_err(|e| e.to_string())?;
     let collections_raw: Vec<(i64, String, Option<String>)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
         .map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
@@ -620,18 +644,16 @@ pub fn export_data(db: State<Database>) -> Result<String, String> {
     }
     data.insert("collections".to_string(), json!(collections));
 
-    // Финальный JSON
     let json_str = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
     Ok(json_str)
 }
 
 #[tauri::command]
-pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> {
+pub fn import_data(db: State<'_, Arc<Database>>, json_str: String) -> Result<(), String> {
     let data: Value = serde_json::from_str(&json_str).map_err(|e| format!("Invalid JSON: {}", e))?;
 
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    // Очищаем все пользовательские данные (но не справочник ачивок!)
     conn.execute_batch(
         "DELETE FROM user_episodes;
          DELETE FROM episodes;
@@ -647,7 +669,6 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
          UPDATE user_profile SET xp = 0, level = 1, total_watch_minutes = 0 WHERE id = 1;"
     ).map_err(|e| e.to_string())?;
 
-    // 1. Профиль
     if let Some(profile) = data.get("profile") {
         conn.execute(
             "UPDATE user_profile SET username = ?1, xp = ?2, level = ?3, total_watch_minutes = ?4 WHERE id = 1",
@@ -660,7 +681,6 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
         ).map_err(|e| e.to_string())?;
     }
 
-    // 2. Тайтлы
     let mut title_map: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
     if let Some(titles) = data.get("titles").and_then(|v| v.as_array()) {
         for t in titles {
@@ -717,7 +737,6 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
         }
     }
 
-    // 3. Ачивки
     if let Some(achievements) = data.get("achievements").and_then(|v| v.as_array()) {
         for a in achievements {
             if let Some(code) = a.get("code").and_then(|v| v.as_str()) {
@@ -731,7 +750,6 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
         }
     }
 
-    // 4. Дневник
     if let Some(diary) = data.get("diary").and_then(|v| v.as_array()) {
         for d in diary {
             if let Some(tmdb_id) = d.get("tmdb_id").and_then(|v| v.as_i64()) {
@@ -754,12 +772,11 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
         }
     }
 
-    // 5. Коллекции
     if let Some(collections) = data.get("collections").and_then(|v| v.as_array()) {
         for c in collections {
             if let Some(name) = c.get("name").and_then(|v| v.as_str()) {
                 conn.execute(
-                    "INSERT INTO collections (name, description) VALUES (?1, ?2)",
+                    "INSERT INTO collections (uuid, name, description) VALUES (lower(hex(randomblob(16))), ?1, ?2)",
                     rusqlite::params![name, c.get("description").and_then(|v| v.as_str())]
                 ).map_err(|e| e.to_string())?;
                 let coll_id = conn.last_insert_rowid();
@@ -781,5 +798,16 @@ pub fn import_data(db: State<Database>, json_str: String) -> Result<(), String> 
         }
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_title_notes(db: State<'_, Arc<Database>>, user_title_id: i64, notes: Option<String>) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE user_titles SET notes = ?1, updated_at = datetime('now') WHERE id = ?2",
+        rusqlite::params![notes, user_title_id]
+    ).map_err(|e| e.to_string())?;
+    let _ = log::record_user_title(&conn, user_title_id);
     Ok(())
 }

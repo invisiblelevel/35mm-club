@@ -1,6 +1,8 @@
 use crate::db::Database;
-use crate::models::{DiaryEntry, Collection, CollectionItem};
+use crate::models::{DiaryEntry, Collection, CollectionItem, LibraryDiaryEntry};
+use crate::sync::log;
 use tauri::State;
+use std::sync::Arc;
 
 fn resolve_poster_url(path: Option<String>) -> Option<String> {
     path.map(|p| {
@@ -13,7 +15,7 @@ fn resolve_poster_url(path: Option<String>) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn get_diary(db: State<Database>) -> Result<Vec<DiaryEntry>, String> {
+pub fn get_diary(db: State<'_, Arc<Database>>) -> Result<Vec<DiaryEntry>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
         "SELECT we.id, we.watched_at, COALESCE(we.rating, ut.rating) as rating, we.notes, we.is_rewatch,
@@ -40,7 +42,42 @@ pub fn get_diary(db: State<Database>) -> Result<Vec<DiaryEntry>, String> {
 }
 
 #[tauri::command]
-pub fn get_collections(db: State<Database>) -> Result<Vec<Collection>, String> {
+pub fn get_library_diary(db: State<'_, Arc<Database>>, status: Option<String>) -> Result<Vec<LibraryDiaryEntry>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let sql_base = "SELECT ut.id, t.title, t.poster_path, t.type, t.tmdb_id, ut.status, ut.rating, ut.notes, ut.added_at
+                    FROM user_titles ut
+                    JOIN titles t ON t.id = ut.title_id";
+
+    let map_row = |row: &rusqlite::Row| -> rusqlite::Result<LibraryDiaryEntry> {
+        Ok(LibraryDiaryEntry {
+            user_title_id: row.get(0)?,
+            title: row.get(1)?,
+            poster_url: resolve_poster_url(row.get::<_, Option<String>>(2)?),
+            type_field: row.get(3)?,
+            tmdb_id: row.get(4)?,
+            status: row.get(5)?,
+            rating: row.get(6)?,
+            notes: row.get(7)?,
+            added_at: row.get(8)?,
+        })
+    };
+
+    let entries = if let Some(ref s) = status {
+        let sql = format!("{} WHERE ut.status = ?1 ORDER BY ut.updated_at DESC", sql_base);
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        stmt.query_map([s], map_row).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    } else {
+        let sql = format!("{} ORDER BY ut.updated_at DESC", sql_base);
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        stmt.query_map([], map_row).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    };
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_collections(db: State<'_, Arc<Database>>) -> Result<Vec<Collection>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn.prepare(
@@ -83,22 +120,32 @@ pub fn get_collections(db: State<Database>) -> Result<Vec<Collection>, String> {
 }
 
 #[tauri::command]
-pub fn create_collection(db: State<Database>, name: String, description: Option<String>) -> Result<i64, String> {
+pub fn create_collection(db: State<'_, Arc<Database>>, name: String, description: Option<String>) -> Result<i64, String> {
     if name.trim().is_empty() { return Err("Название не может быть пустым".to_string()); }
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    conn.execute("INSERT INTO collections (name, description) VALUES (?1, ?2)", rusqlite::params![name.trim(), description]).map_err(|e| e.to_string())?;
-    Ok(conn.last_insert_rowid())
+    conn.execute("INSERT INTO collections (uuid, name, description) VALUES (lower(hex(randomblob(16))), ?1, ?2)", rusqlite::params![name.trim(), description]).map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    let _ = log::record_collection(&conn, id);
+    Ok(id)
 }
 
 #[tauri::command]
-pub fn delete_collection(db: State<Database>, collection_id: i64) -> Result<(), String> {
+pub fn delete_collection(db: State<'_, Arc<Database>>, collection_id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let uuid: Option<String> = conn.query_row(
+        "SELECT uuid FROM collections WHERE id = ?1",
+        [collection_id],
+        |r| r.get(0),
+    ).ok().flatten();
     conn.execute("DELETE FROM collections WHERE id = ?1", [collection_id]).map_err(|e| e.to_string())?;
+    if let Some(u) = uuid {
+        let _ = log::record_collection_deleted(&conn, &u);
+    }
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_collection_items(db: State<Database>, collection_id: i64) -> Result<Vec<CollectionItem>, String> {
+pub fn get_collection_items(db: State<'_, Arc<Database>>, collection_id: i64) -> Result<Vec<CollectionItem>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
         "SELECT ut.id, t.title, t.poster_path, t.type, t.tmdb_id, t.year, ut.status
@@ -122,21 +169,38 @@ pub fn get_collection_items(db: State<Database>, collection_id: i64) -> Result<V
 }
 
 #[tauri::command]
-pub fn add_to_collection(db: State<Database>, collection_id: i64, user_title_id: i64) -> Result<(), String> {
+pub fn add_to_collection(db: State<'_, Arc<Database>>, collection_id: i64, user_title_id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("INSERT OR IGNORE INTO collection_items (collection_id, user_title_id) VALUES (?1, ?2)", rusqlite::params![collection_id, user_title_id]).map_err(|e| e.to_string())?;
+    let _ = log::record_collection_item(&conn, collection_id, user_title_id);
     Ok(())
 }
 
 #[tauri::command]
-pub fn remove_from_collection(db: State<Database>, collection_id: i64, user_title_id: i64) -> Result<(), String> {
+pub fn remove_from_collection(db: State<'_, Arc<Database>>, collection_id: i64, user_title_id: i64) -> Result<(), String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let ids: Option<(String, String, i64)> = conn.query_row(
+        "SELECT c.uuid, t.type, t.tmdb_id
+         FROM collections c, user_titles ut
+         JOIN titles t ON t.id = ut.title_id
+         WHERE c.id = ?1 AND ut.id = ?2",
+        rusqlite::params![collection_id, user_title_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    ).ok();
+
     conn.execute("DELETE FROM collection_items WHERE collection_id = ?1 AND user_title_id = ?2", rusqlite::params![collection_id, user_title_id]).map_err(|e| e.to_string())?;
+
+    if let Some((uuid, type_field, tmdb_id)) = ids {
+        let title_key = format!("{}:{}", type_field, tmdb_id);
+        let _ = log::record_collection_item_deleted(&conn, &uuid, &title_key);
+    }
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_user_collections_for_title(db: State<Database>, user_title_id: i64) -> Result<Vec<i64>, String> {
+pub fn get_user_collections_for_title(db: State<'_, Arc<Database>>, user_title_id: i64) -> Result<Vec<i64>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT collection_id FROM collection_items WHERE user_title_id = ?1").map_err(|e| e.to_string())?;
     let ids = stmt.query_map([user_title_id], |row| row.get(0)).map_err(|e| e.to_string())?.collect::<Result<Vec<i64>, _>>().map_err(|e| e.to_string())?;

@@ -84,6 +84,7 @@ pub struct UserTitleData {
     pub user_title_id: Option<i64>,
     pub status: Option<String>,
     pub rating: Option<f64>,
+    pub notes: Option<String>,
     pub added_at: Option<String>,
 }
 
@@ -131,4 +132,17 @@ pub struct CollectionItem {
     pub tmdb_id: Option<i64>,
     pub year: Option<i64>,
     pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LibraryDiaryEntry {
+    pub user_title_id: i64,
+    pub title: String,
+    pub poster_url: Option<String>,
+    pub type_field: String,
+    pub tmdb_id: Option<i64>,
+    pub status: String,
+    pub rating: Option<f64>,
+    pub notes: Option<String>,
+    pub added_at: String,
 }

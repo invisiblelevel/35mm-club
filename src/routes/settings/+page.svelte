@@ -2,7 +2,8 @@
   import { t, locale } from 'svelte-i18n';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { Settings as SettingsIcon, Globe, Sun, Moon, Monitor, AlertTriangle, RefreshCw, Download, Upload } from 'lucide-svelte';
+  import { listen } from '@tauri-apps/api/event';
+  import { Settings as SettingsIcon, Globe, Sun, Moon, Monitor, AlertTriangle, RefreshCw, Download, Upload, Wifi, Smartphone, Monitor as PcIcon, Trash2, Loader2, CheckCircle2 } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import { save, open } from '@tauri-apps/plugin-dialog';
@@ -20,6 +21,193 @@
   let backupMsg = $state('');
 
   let tmdbKey = $state(settings.tmdbKey);
+
+  // ===== Синк =====
+  type PeerInfo = {
+    device_id: string;
+    device_name: string;
+    public_key: string;
+    paired: boolean;
+    last_seen_at: string | null;
+    last_sync_at: string | null;
+  };
+  type FoundPeer = {
+    device_id: string;
+    device_name: string;
+    address: string;
+    paired: boolean;
+  };
+  type SyncStatus =
+    | { state: 'idle'; last_sync_at: string | null; last_peer_name: string | null }
+    | { state: 'discovering' }
+    | { state: 'awaiting_pairing'; found: FoundPeer[] }
+    | { state: 'syncing'; peer_name: string }
+    | { state: 'done'; peer_name: string; pushed: number; pulled: number; duration_ms: number }
+    | { state: 'error'; message: string };
+
+  let syncStatus = $state<SyncStatus>({ state: 'idle', last_sync_at: null, last_peer_name: null });
+  let syncPeers = $state<PeerInfo[]>([]);
+  let syncIdentity = $state<{ device_id: string; device_name: string } | null>(null);
+  let syncInProgress = $state(false);
+  let showPairModal = $state(false);
+  let pairingPeers = $state<FoundPeer[]>([]);
+  let renamingDevice = $state(false);
+  let renameInput = $state('');
+
+  async function loadSyncPeers() {
+    try {
+      syncPeers = await invoke<PeerInfo[]>('sync_get_peers');
+    } catch (e) {
+      console.error('sync_get_peers:', e);
+    }
+  }
+
+  async function loadSyncIdentity() {
+    try {
+      syncIdentity = await invoke<{ device_id: string; device_name: string }>('sync_get_identity');
+      if (syncIdentity) renameInput = syncIdentity.device_name;
+    } catch (e) {
+      console.error('sync_get_identity:', e);
+    }
+  }
+
+  async function loadSyncStatus() {
+    try {
+      syncStatus = await invoke<SyncStatus>('sync_get_status');
+    } catch (e) {
+      console.error('sync_get_status:', e);
+    }
+  }
+
+  async function doSync() {
+    if (syncInProgress) return;
+    syncInProgress = true;
+    try {
+      const status = await invoke<SyncStatus>('sync_now', { forcePeerId: null });
+      syncStatus = status;
+      if (status.state === 'awaiting_pairing') {
+        pairingPeers = status.found;
+        showPairModal = true;
+      }
+      await loadSyncPeers();
+    } catch (e) {
+      syncStatus = { state: 'error', message: String(e) };
+    } finally {
+      syncInProgress = false;
+    }
+  }
+
+  async function pairWith(peer: FoundPeer) {
+    try {
+      const status = await invoke<SyncStatus>('sync_pair_and_sync', {
+        deviceId: peer.device_id,
+        address: peer.address,
+      });
+      syncStatus = status;
+      await loadSyncPeers();
+      showPairModal = false;
+    } catch (e) {
+      syncStatus = { state: 'error', message: String(e) };
+    }
+  }
+
+  async function forgetPeer(deviceId: string) {
+    if (!confirm($t('settings.sync_forget_confirm'))) return;
+    try {
+      await invoke('sync_forget_peer', { deviceId });
+      await loadSyncPeers();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function saveDeviceName() {
+    if (!renameInput.trim()) return;
+    try {
+      const newName = await invoke<string>('sync_rename_device', { newName: renameInput.trim() });
+      if (syncIdentity) syncIdentity.device_name = newName;
+      renamingDevice = false;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  let unlistenStatus: (() => void) | null = null;
+  let unlistenPairing: (() => void) | null = null;
+
+  onMount(() => {
+    loadSyncIdentity();
+    loadSyncPeers();
+    loadSyncStatus();
+
+    (async () => {
+      unlistenStatus = await listen<SyncStatus>('sync:status', (e) => {
+        syncStatus = e.payload;
+        if (e.payload.state === 'done' || e.payload.state === 'error') {
+          loadSyncPeers();
+        }
+      });
+      unlistenPairing = await listen<SyncStatus>('sync:awaiting_pairing', (e) => {
+        if (e.payload.state === 'awaiting_pairing') {
+          pairingPeers = e.payload.found;
+          showPairModal = true;
+          syncStatus = e.payload;
+        }
+      });
+    })();
+
+    return () => {
+      if (unlistenStatus) unlistenStatus();
+      if (unlistenPairing) unlistenPairing();
+    };
+  });
+
+  function syncStatusLabel(): string {
+    switch (syncStatus.state) {
+      case 'idle':
+        if (syncStatus.last_sync_at && syncStatus.last_peer_name) {
+          return $t('settings.sync_last', { values: { peer: syncStatus.last_peer_name, time: syncStatus.last_sync_at } });
+        }
+        return $t('settings.sync_idle');
+      case 'discovering':
+        return $t('settings.sync_discovering');
+      case 'awaiting_pairing':
+        return $t('settings.sync_awaiting');
+      case 'syncing':
+        return $t('settings.sync_syncing', { values: { peer: syncStatus.peer_name } });
+      case 'done':
+        return $t('settings.sync_done', { values: { peer: syncStatus.peer_name, pushed: syncStatus.pushed, pulled: syncStatus.pulled } });
+      case 'error':
+        if (
+          syncStatus.message.includes('connect') ||
+          syncStatus.message.includes('os error') ||
+          syncStatus.message.includes('connection')
+        ) {
+          return $t('settings.sync_error_firewall');
+        }
+        return syncStatus.message;
+    }
+  }
+
+  function syncStatusColor(): string {
+    switch (syncStatus.state) {
+      case 'done': return 'text-emerald-300';
+      case 'error': return 'text-red-300';
+      case 'syncing':
+      case 'discovering': return 'text-gold';
+      default: return 'text-zinc-400';
+    }
+  }
+
+  function formatTime(iso: string | null): string {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso.replace(' ', 'T') + 'Z');
+      return d.toLocaleString();
+    } catch {
+      return iso;
+    }
+  }
 
   function saveTmdbKey() {
     settings.setTmdbKey(tmdbKey);
@@ -167,6 +355,100 @@
     </div>
   </section>
 
+  <!-- СИНХРОНИЗАЦИЯ -->
+  <section class="bg-surface border border-border rounded-xl p-4 md:p-6">
+    <h2 class="font-display text-base md:text-lg font-semibold mb-3 md:mb-4 flex items-center gap-2">
+      <Wifi size={18} class="text-gold" />
+      {$t('settings.section_sync')}
+    </h2>
+
+    <p class="text-xs md:text-sm text-zinc-400 mb-4">{$t('settings.sync_hint')}</p>
+
+    {#if syncIdentity}
+      <div class="mb-4 p-3 rounded-lg bg-ink-light border border-border">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-xs text-zinc-500">{$t('settings.sync_this_device')}</div>
+            {#if renamingDevice}
+              <div class="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  bind:value={renameInput}
+                  class="px-2 py-1 bg-ink border border-border rounded text-sm text-zinc-100 focus:border-gold focus:outline-none min-w-0"
+                  maxlength="64"
+                />
+                <button onclick={saveDeviceName} class="text-gold text-xs hover:underline">{$t('common.save')}</button>
+                <button onclick={() => { renamingDevice = false; renameInput = syncIdentity!.device_name; }} class="text-zinc-500 text-xs hover:underline">{$t('common.cancel')}</button>
+              </div>
+            {:else}
+              <div class="text-sm text-zinc-200 font-medium truncate">
+                {syncIdentity.device_name}
+                <button onclick={() => renamingDevice = true} class="ml-2 text-xs text-gold hover:underline">{$t('settings.sync_rename')}</button>
+              </div>
+              <div class="text-[10px] text-zinc-600 font-mono truncate">{syncIdentity.device_id}</div>
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <button
+      onclick={doSync}
+      disabled={syncInProgress}
+      class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-semibold rounded-lg text-sm md:text-base transition-all disabled:opacity-50 disabled:cursor-wait"
+    >
+      {#if syncInProgress}
+        <Loader2 size={18} class="animate-spin" />
+        {$t('settings.sync_button_busy')}
+      {:else}
+        <Wifi size={18} />
+        {$t('settings.sync_button')}
+      {/if}
+    </button>
+
+    <div class="mt-3 flex items-center gap-2 text-xs md:text-sm {syncStatusColor()}">
+      {#if syncStatus.state === 'done'}
+        <CheckCircle2 size={14} />
+      {/if}
+      <span class="break-words">{syncStatusLabel()}</span>
+    </div>
+
+    {#if syncPeers.length > 0}
+      <div class="mt-4">
+        <h3 class="text-xs text-zinc-500 uppercase tracking-wide mb-2">{$t('settings.sync_peers')}</h3>
+        <div class="space-y-2">
+          {#each syncPeers as peer}
+            <div class="flex items-center gap-3 p-2.5 rounded-lg bg-ink-light border border-border">
+              <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface border border-border text-zinc-400 shrink-0">
+                {#if peer.device_name.toLowerCase().includes('android') || peer.device_name.toLowerCase().includes('pixel') || peer.device_name.toLowerCase().includes('phone')}
+                  <Smartphone size={16} />
+                {:else}
+                  <PcIcon size={16} />
+                {/if}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-zinc-200 font-medium truncate">{peer.device_name}</div>
+                <div class="text-[10px] text-zinc-600 font-mono truncate">
+                  {peer.device_id}
+                  {#if peer.last_seen_at}
+                    <span class="ml-2 text-zinc-500">· {formatTime(peer.last_seen_at)}</span>
+                  {/if}
+                </div>
+              </div>
+              <button
+                onclick={() => forgetPeer(peer.device_id)}
+                class="text-zinc-500 hover:text-red-400 transition-colors p-1.5 shrink-0"
+                title={$t('settings.sync_forget')}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </section>
+
   <!-- API -->
   <section class="bg-surface border border-border rounded-xl p-4 md:p-6">
     <h2 class="font-display text-base md:text-lg font-semibold mb-3 md:mb-4">{$t('settings.section_api')}</h2>
@@ -293,6 +575,37 @@
           disabled={resetting}
           class="px-4 py-2.5 bg-red-700 hover:bg-red-600 active:scale-[0.98] text-white font-medium rounded-lg text-sm transition-all disabled:opacity-50"
         >{resetting ? $t('common.loading') : $t('settings.reset_confirm')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showPairModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onclick={(e) => e.target === e.currentTarget && (showPairModal = false)} role="presentation">
+    <div class="w-full max-w-md bg-surface border border-border rounded-2xl p-4 md:p-6" onclick={(e) => e.stopPropagation()}>
+      <h2 class="font-display text-lg md:text-xl font-bold mb-2">{$t('settings.sync_pair_title')}</h2>
+      <p class="text-sm text-zinc-400 mb-4">{$t('settings.sync_pair_description')}</p>
+
+      <div class="space-y-2 mb-4">
+        {#each pairingPeers as peer}
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-ink-light border border-border">
+            <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border text-gold shrink-0">
+              <Smartphone size={18} />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm text-zinc-200 font-medium truncate">{peer.device_name}</div>
+              <div class="text-[10px] text-zinc-600 font-mono truncate">{peer.device_id}</div>
+            </div>
+            <button
+              onclick={() => pairWith(peer)}
+              class="px-3 py-1.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg text-xs transition-all shrink-0"
+            >{$t('settings.sync_pair_button')}</button>
+          </div>
+        {/each}
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick={() => showPairModal = false} class="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">{$t('common.cancel')}</button>
       </div>
     </div>
   </div>

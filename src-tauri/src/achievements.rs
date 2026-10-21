@@ -51,7 +51,7 @@ fn count_person_in_library(conn: &Connection, person_id: i64, field: &str) -> Re
         "cast_ids" | "director_ids" | "producer_ids" => {}
         _ => return Ok(0),
     }
-    let sql = format!("SELECT DISTINCT tm.title_id, tm.{} FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.{} IS NOT NULL", field, field);
+    let sql = format!("SELECT DISTINCT tm.title_id, tm.{} FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.{} IS NOT NULL AND ut.status = 'completed'", field, field);
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows: Vec<(i64, String)> = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?))).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
     let mut count = 0;
@@ -68,7 +68,7 @@ fn count_id_in_json_field(conn: &Connection, target_id: i64, field: &str) -> Res
         "keyword_ids" | "production_company_ids" => {}
         _ => return Ok(0),
     }
-    let sql = format!("SELECT tm.{} FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.{} IS NOT NULL", field, field);
+    let sql = format!("SELECT tm.{} FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.{} IS NOT NULL AND ut.status = 'completed'", field, field);
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows: Vec<String> = stmt.query_map([], |row| row.get(0)).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
     let mut count = 0;
@@ -86,6 +86,9 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
     let movies_count: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'movie'", [], |row| row.get(0)).unwrap_or(0);
     let tv_count: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'tv'", [], |row| row.get(0)).unwrap_or(0);
     let anime_count: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'anime'", [], |row| row.get(0)).unwrap_or(0);
+	let status_planned: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'planned'", [], |row| row.get(0)).unwrap_or(0);
+    let status_on_hold: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'on_hold'", [], |row| row.get(0)).unwrap_or(0);
+    let status_dropped: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'dropped'", [], |row| row.get(0)).unwrap_or(0);
 
     let mut stmt = conn.prepare(
         "SELECT a.id, a.code, a.category, a.icon, a.xp_reward, a.scope, a.tier, a.is_secret, a.title_key, a.description_key, a.condition_type, a.condition_value, a.required_count
@@ -99,7 +102,7 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
 
     for (id, code, category, icon, xp_reward, scope, tier, is_secret, title_key, description_key, cond_type, cond_value_opt, required) in pending {
         let cond_value = cond_value_opt.unwrap_or(0);
-        let is_counter = matches!(cond_type.as_str(), "total_count" | "movies_count" | "tv_count" | "anime_count");
+        let is_counter = matches!(cond_type.as_str(), "total_count" | "movies_count" | "tv_count" | "anime_count" | "status_planned" | "status_on_hold" | "status_dropped");
         let no_id_type = matches!(cond_type.as_str(), "ratings_1" | "night_watch" | "user_rating_with_low_tmdb" | "daily_completed" | "tv_episodes_completed" | "anime_episodes_completed" | "anime_franchise_completed");
         if cond_value == 0 && !is_counter && !no_id_type { continue; }
 
@@ -108,14 +111,17 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
             "movies_count" => movies_count >= cond_value,
             "tv_count" => tv_count >= cond_value,
             "anime_count" => anime_count >= cond_value,
-            "movie_id" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
+			"status_planned" => status_planned >= cond_value,
+            "status_on_hold" => status_on_hold >= cond_value,
+            "status_dropped" => status_dropped >= cond_value,
+            "movie_id" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1 AND ut.status = 'completed'", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
             "cast_contains" => count_person_in_library(conn, cond_value, "cast_ids")? >= required,
             "director_contains" => count_person_in_library(conn, cond_value, "director_ids")? >= required,
             "cast_or_producer_contains" => { let a = count_person_in_library(conn, cond_value, "cast_ids")?; let b = count_person_in_library(conn, cond_value, "producer_ids")?; (a + b) >= required }
-            "runtime_gt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.runtime >= ?1", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
-            "runtime_lt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.runtime <= ?1", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
-            "year_lt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.year < ?1", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
-            "collection_id" => { let c: i64 = conn.query_row("SELECT COUNT(DISTINCT ut.title_id) FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.collection_id = ?1", [cond_value], |r| r.get(0)).unwrap_or(0); c >= required }
+            "runtime_gt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.runtime >= ?1 AND ut.status = 'completed'", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
+            "runtime_lt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.runtime <= ?1 AND ut.status = 'completed'", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
+            "year_lt" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM titles t JOIN user_titles ut ON ut.title_id = t.id WHERE t.year < ?1 AND ut.status = 'completed'", [cond_value], |r| r.get(0)).unwrap_or(0); c > 0 }
+            "collection_id" => { let c: i64 = conn.query_row("SELECT COUNT(DISTINCT ut.title_id) FROM title_metadata tm JOIN user_titles ut ON ut.title_id = tm.title_id WHERE tm.collection_id = ?1 AND ut.status = 'completed'", [cond_value], |r| r.get(0)).unwrap_or(0); c >= required }
             "keyword_or_company" => { let k = count_id_in_json_field(conn, cond_value, "keyword_ids")?; let c = count_id_in_json_field(conn, 420, "production_company_ids")?; k.max(c) >= required }
             "user_rating_with_low_tmdb" => { let c: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE ut.rating >= 8.0 AND t.imdb_rating < 4.0", [], |r| r.get(0)).unwrap_or(0); c >= 1 }
             "ratings_1" => { let mut s2 = conn.prepare("SELECT rating FROM user_titles WHERE rating IS NOT NULL ORDER BY updated_at DESC LIMIT ?1").map_err(|e| e.to_string())?; let r: Vec<f64> = s2.query_map([required], |r| r.get(0)).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?; r.len() as i64 >= required && r.iter().all(|v| (*v - 1.0).abs() < 0.001) }
@@ -151,7 +157,7 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
                     "anime_black_lagoon" => vec![889, 1519],
                     "anime_naruto_legend" => vec![20, 1735],
                     "anime_made_in_abyss" => vec![34599, 41084],
-					"anime_mushoku_tensei" => vec![39535, 45576],
+                    "anime_mushoku_tensei" => vec![39535, 45576],
                     _ => vec![],
                 };
                 if mal_ids.is_empty() { false }
@@ -169,6 +175,7 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
 
         if satisfied {
             conn.execute("INSERT INTO user_achievements (achievement_id) VALUES (?1)", [id]).map_err(|e| e.to_string())?;
+			let _ = crate::sync::log::record_user_achievement(conn, id);
             award_xp_internal(conn, xp_reward)?;
             newly_unlocked.push(Achievement { id, code, category, icon, xp_reward, scope, tier, is_secret: is_secret != 0, title_key, description_key, unlocked: true, unlocked_at: None });
         }

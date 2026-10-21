@@ -58,7 +58,7 @@
     "loading": "...",
     "empty": "未找到结果",
     "no_poster": "无海报",
-	"in_library": "在媒体库中"
+    "in_library": "在媒体库中"
   },
   "common": {
     "save": "保存",
@@ -99,7 +99,11 @@
     "title": "观影日记",
     "subtitle": "带日期和评分的观看历史",
     "empty": "日记为空",
-    "empty_hint": "标记观看——历史将显示在此"
+    "empty_hint": "标记观看——历史将显示在此",
+    "tab_all": "全部",
+    "notes_placeholder": "简短备注...",
+    "notes_empty": "无备注",
+    "edit_notes": "编辑备注"
   },
   "achievements": {
     "title": "成就",
@@ -110,7 +114,7 @@
     "empty_hint": "看电影——赢奖励",
     "unlocked_at": "解锁于 {date}",
     "secret": "隐藏成就",
-	"toast_title": "成就解锁！"
+    "toast_title": "成就解锁！"
   },
   "profile": {
     "title": "个人资料",
@@ -151,6 +155,7 @@
     "section_appearance": "外观",
     "section_api": "API",
     "section_advanced": "高级",
+    "section_sync": "Wi-Fi 同步",
     "section_danger": "危险区域",
     "language": "语言",
     "theme": "主题",
@@ -184,7 +189,7 @@
     "reset_confirm": "是的，删除全部",
     "reset_cancel": "取消",
     "reset_success": "个人资料已重置",
-	"section_backup": "备份",
+    "section_backup": "备份",
     "export": "导出数据",
     "export_hint": "将整个媒体库、成就、日记和收藏集保存为单个 JSON 文件。",
     "import": "导入数据",
@@ -193,7 +198,28 @@
     "export_error": "导出错误：{error}",
     "import_confirm": "导入将替换当前整个媒体库和进度。是否继续？",
     "import_done": "导入完成。请重新加载应用。",
-    "import_error": "导入错误：{error}"
+    "import_error": "导入错误：{error}",
+    "sync_hint": "在同一 Wi-Fi 网络下，在任意设备上点击按钮——设备会互相发现并交换更改。首次连接需要确认。",
+    "sync_this_device": "此设备",
+    "sync_rename": "重命名",
+    "sync_button": "同步",
+    "sync_button_busy": "同步中...",
+    "sync_idle": "准备同步",
+    "sync_discovering": "正在搜索设备...",
+    "sync_awaiting": "发现新设备——请确认连接",
+    "sync_syncing": "正在与 {peer} 同步...",
+    "sync_done": "已与 {peer} 同步：↑{pushed} ↓{pulled}",
+	"sync_error_firewall": "无法连接。可能是 Windows 防火墙阻止了同步。首次启动时，当 Windows 询问时点击「允许访问」。如果无效，请在防火墙设置中为端口 47820 添加规则。",
+    "sync_last": "上次同步：{time} 与 {peer}",
+    "sync_peers": "已连接的设备",
+    "sync_forget": "忘记设备",
+    "sync_forget_confirm": "忘记此设备？下次需要重新确认连接。",
+    "sync_pair_title": "连接设备？",
+    "sync_pair_description": "在此 Wi-Fi 网络中发现新设备。确认连接以同步你的库。",
+    "sync_pair_button": "连接",
+    "sync_toast_done": "已同步",
+    "sync_toast_pairing": "发现新设备",
+    "sync_toast_pairing_hint": "打开 设置 → 同步 进行连接"
   },
   "status": {
     "watching": "在看",
@@ -232,7 +258,8 @@
     "watched": "已观看",
     "episodes_not_found": "未找到剧集",
     "add_to_collection": "添加到收藏集",
-	"progress": "观看进度",
-"fully_watched": "已全部看完！"
+    "progress": "观看进度",
+    "fully_watched": "已全部看完！",
+    "your_notes": "你的备注"
   }
 }

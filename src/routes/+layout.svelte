@@ -6,6 +6,7 @@
   import { settings } from '$lib/settings.svelte';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
 
@@ -17,7 +18,7 @@
 
   import {
     Film, Tv, Clapperboard, BookOpen, FolderHeart,
-    Trophy, User, Settings, Search, Info, Loader2, Menu, X
+    Trophy, User, Settings, Search, Info, Loader2, Menu, X, Wifi
   } from 'lucide-svelte';
 
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -31,7 +32,23 @@
   let translating = $state(false);
   let sidebarOpen = $state(false);
 
+  // sync toast
+  type SyncToast = {
+    kind: 'done' | 'pairing';
+    peer_name?: string;
+    pushed?: number;
+    pulled?: number;
+  };
+  let syncToast = $state<SyncToast | null>(null);
+  let syncToastTimer: ReturnType<typeof setTimeout> | null = null;
+
   const currentToast = $derived(toastQueue.length > 0 ? toastQueue[0] : null);
+
+  function showSyncToast(data: SyncToast) {
+    syncToast = data;
+    if (syncToastTimer) clearTimeout(syncToastTimer);
+    syncToastTimer = setTimeout(() => { syncToast = null; }, 5000);
+  }
 
   onMount(() => {
     settings.init();
@@ -51,7 +68,30 @@
       }
     };
     window.addEventListener('achievement-toast', handleToast);
-    return () => window.removeEventListener('achievement-toast', handleToast);
+
+    let unlistenPeerDone: (() => void) | null = null;
+    let unlistenAwaiting: (() => void) | null = null;
+
+    (async () => {
+      unlistenPeerDone = await listen<{ peer_name: string; pushed: number; pulled: number; duration_ms: number }>('sync:peer_done', (e) => {
+        showSyncToast({
+          kind: 'done',
+          peer_name: e.payload.peer_name,
+          pushed: e.payload.pushed,
+          pulled: e.payload.pulled,
+        });
+      });
+      unlistenAwaiting = await listen('sync:awaiting_pairing', () => {
+        showSyncToast({ kind: 'pairing' });
+      });
+    })();
+
+    return () => {
+      window.removeEventListener('achievement-toast', handleToast);
+      if (unlistenPeerDone) unlistenPeerDone();
+      if (unlistenAwaiting) unlistenAwaiting();
+      if (syncToastTimer) clearTimeout(syncToastTimer);
+    };
   });
 
   $effect(() => {
@@ -226,5 +266,29 @@
 
   {#if currentToast}
     <AchievementToast toast={currentToast} onClose={() => toastQueue = toastQueue.slice(1)} />
+  {/if}
+
+  {#if syncToast}
+    <div class="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div class="flex items-start gap-3 p-3.5 rounded-xl bg-surface border border-gold/40 shadow-2xl shadow-black/50">
+        <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-gradient-to-b from-gold to-gold-dark text-ink shrink-0">
+          <Wifi size={18} />
+        </div>
+        <div class="flex-1 min-w-0">
+          {#if syncToast.kind === 'done'}
+            <div class="text-sm font-semibold text-zinc-100">{$t('settings.sync_toast_done')}</div>
+            <div class="text-xs text-zinc-400 mt-0.5 truncate">
+              {syncToast.peer_name}
+              {#if syncToast.pushed !== undefined || syncToast.pulled !== undefined}
+                · ↑{syncToast.pushed ?? 0} ↓{syncToast.pulled ?? 0}
+              {/if}
+            </div>
+          {:else}
+            <div class="text-sm font-semibold text-zinc-100">{$t('settings.sync_toast_pairing')}</div>
+            <div class="text-xs text-zinc-400 mt-0.5">{$t('settings.sync_toast_pairing_hint')}</div>
+          {/if}
+        </div>
+      </div>
+    </div>
   {/if}
 {/await}

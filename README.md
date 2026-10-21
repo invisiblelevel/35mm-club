@@ -2,7 +2,7 @@
 
 **Your cinema. Your rules.** · **Твоя кинотека. Твои правила.** · **你的影院。你的规则。**
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](../../releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Android%208%2B-0078D6.svg)](#install)
 [![Tauri](https://img.shields.io/badge/tauri-2.12-24C8DB.svg)](https://tauri.app/)
@@ -28,6 +28,7 @@ Add a title → track episodes → earn achievements → level up. Everything ha
 - **90+ achievements** — Common, Rare, Epic, Legendary, with custom icons and descriptions
 - **Ranks and XP** — 10 military-style ranks from Private to General
 - **Ribbon rack (kokarda)** — unlocks at level 20 (Major) and grows with level and achievements
+- **Wi-Fi sync** — one button on any device in the same network; syncs library, achievements, diary, notes and collections between your PC and phone. Pair once, then silent. No clouds, no accounts.
 - **Custom collections** — your own lists with posters preview
 - **Diary** — watch history with dates, ratings and notes
 - **Ratings** — half-star precision (0.5–10.0) for movies, TV and anime
@@ -52,15 +53,31 @@ Add a title → track episodes → earn achievements → level up. Everything ha
 | Director / actor | 6 | Nolan Approves, Tarantino Feet, Cage Fever |
 | Time / runtime | 5 | Night Owl, Ancient Fossil, Marathon Endurance |
 
+### Wi-Fi Sync
+
+Sync your library between PC and phone over local Wi-Fi. No cloud, no accounts, no data leaves your network.
+
+1. Make sure both devices are on the **same Wi-Fi network**.
+2. Open **Settings → Wi-Fi Sync** on either device.
+3. Press **Sync**.
+4. On the other device, confirm the connection once (a popup will appear).
+5. Done. Next time just press **Sync** — it works silently.
+
+**What gets synced:** library (movies, TV, anime), ratings, notes, watch progress, achievements, diary, collections. Resolves conflicts by most-recent change.
+
+**Not synced:** settings (theme, language), episode metadata (each device fetches its own).
+
+> **Note for Windows users:** On first sync, Windows Firewall may ask for network access — click **Allow**. If you missed it, the app will show an error with instructions.
+
 ### Tech Stack
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
 
 ### Install
 
-**Windows:** Download **35mm Club Setup v1.0.1.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
+**Windows:** Download **35mm Club Setup v1.1.0.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
 
-**Android:** Download **35mm Club v1.0.1.apk** from [Releases](../../releases), allow installation from unknown sources, install.
+**Android:** Download **35mm Club v1.1.0.apk** from [Releases](../../releases), allow installation from unknown sources, install.
 
 Windows 10 version 1903 or newer / Windows 11 (64-bit) · Android 8.0 or newer.
 
@@ -117,6 +134,7 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 - **90+ ачивок** — Common, Rare, Epic, Legendary, с кастомными иконками и описаниями
 - **Звания и XP** — 10 военных званий от Рядового до Генерала
 - **Кокарда (планки)** — открывается на 20 уровне (Майор) и растёт вместе с уровнем и ачивками
+- **Синхронизация по Wi-Fi** — одна кнопка на любом устройстве в одной сети; синкает библиотеку, ачивки, дневник, заметки и коллекции между ПК и телефоном. Один раз подтвердил — дальше молча. Без облаков и аккаунтов.
 - **Кастомные коллекции** — свои списки с превью постеров
 - **Дневник** — история просмотров с датами, оценками и заметками
 - **Рейтинги** — с точностью до половины звезды (0.5–10.0) для фильмов, сериалов и аниме
@@ -141,15 +159,31 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 | Режиссёры / актёры | 6 | Нолан одобряет, Ценитель женских стоп, Клетка переполнена |
 | Время / хронометраж | 5 | Полуночный сеанс, Археолог кинематографа, Попа из стали |
 
+### Синхронизация по Wi-Fi
+
+Синкает библиотеку между ПК и телефоном по локальной Wi-Fi. Без облака, без аккаунтов, без выхода в интернет — данные не покидают твою сеть.
+
+1. Убедись, что оба устройства в **одной Wi-Fi сети**.
+2. Открой **Настройки → Синхронизация** на любом устройстве.
+3. Нажми **Синхронизировать**.
+4. На втором устройстве подтверди подключение один раз (всплывёт окно).
+5. Готово. В следующий раз просто жми **Синхронизировать** — работает молча.
+
+**Что синкается:** библиотека (фильмы, сериалы, аниме), рейтинги, заметки, прогресс просмотра, ачивки, дневник, коллекции. Конфликты решаются по самому свежему изменению.
+
+**Что не синкается:** настройки (тема, язык), метаданные серий (каждое устройство тянет само).
+
+> **Для Windows:** при первой синхронизации Windows Firewall может спросить доступ к сети — нажми **Разрешить**. Если пропустил — приложение покажет ошибку с инструкцией.
+
 ### Стек
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
 
 ### Установка
 
-**Windows:** Скачай **35mm Club Setup v1.0.1.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
+**Windows:** Скачай **35mm Club Setup v1.1.0.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
 
-**Android:** Скачай **35mm Club v1.0.1.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
+**Android:** Скачай **35mm Club v1.1.0.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
 
 Поддерживается Windows 10 (версия 1903+) / Windows 11 (64-bit) · Android 8.0+.
 
@@ -206,6 +240,7 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 - **90+ 个成就** — 普通、稀有、史诗、传奇，自定义图标和描述
 - **军衔与经验值** — 10 个军事风格军衔，从列兵到将军
 - **勋表（кокарда）** — 20 级（少校）解锁，随等级和成就成长
+- **Wi-Fi 同步** — 在同一网络的任意设备上按一个按钮；在 PC 和手机之间同步媒体库、成就、日记、笔记和收藏集。配对一次，之后静默运行。无云端、无账号。
 - **自定义收藏集** — 自己的列表，带海报预览
 - **观影日记** — 带日期、评分和笔记的观看历史
 - **评分** — 半星精度（0.5–10.0），适用于电影、剧集和动漫
@@ -230,15 +265,31 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 | 导演 / 演员 | 6 | 诺兰认可、女性脚部鉴赏家、凯奇爆满 |
 | 时间 / 时长 | 5 | 午夜场、电影考古学家、钢铁屁股 |
 
+### Wi-Fi 同步
+
+在本地 Wi-Fi 之间同步 PC 和手机上的媒体库。无云端、无账号、数据不离开你的网络。
+
+1. 确保两台设备在**同一 Wi-Fi 网络**下。
+2. 在任意一台设备上打开 **设置 → Wi-Fi 同步**。
+3. 按下 **同步**。
+4. 在另一台设备上确认连接一次（会弹出窗口）。
+5. 完成。下次只需按 **同步** — 会静默运行。
+
+**同步内容：** 媒体库（电影、剧集、动漫）、评分、笔记、观看进度、成就、日记、收藏集。冲突按最新更改解决。
+
+**不同步：** 设置（主题、语言）、剧集元数据（每台设备自行获取）。
+
+> **Windows 用户注意：** 首次同步时，Windows 防火墙可能会询问网络访问 — 点击 **允许**。如果错过了，应用会显示错误并附上说明。
+
 ### 技术栈
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
 
 ### 安装
 
-**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.0.1.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
+**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.1.0.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
 
-**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.0.1.apk**，允许从未知来源安装，然后安装。
+**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.1.0.apk**，允许从未知来源安装，然后安装。
 
 支持 Windows 10（1903 或更新版本）/ Windows 11（64 位）· Android 8.0+。
 

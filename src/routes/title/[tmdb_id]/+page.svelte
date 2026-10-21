@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { ArrowLeft, Star, Clock, ExternalLink, Film, ChevronDown, ChevronRight, Check, FolderPlus } from 'lucide-svelte';
+  import { ArrowLeft, Star, Clock, ExternalLink, Film, ChevronDown, ChevronRight, Check, FolderPlus, Pencil, X } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import { goto } from '$app/navigation';
 
@@ -16,7 +16,7 @@
   };
 
   type UserTitleData = {
-    user_title_id: number | null; status: string | null; rating: number | null; added_at: string | null;
+    user_title_id: number | null; status: string | null; rating: number | null; notes: string | null; added_at: string | null;
   };
 
   type Achievement = { id: number; code: string; title_key: string | null; description_key: string | null; xp_reward: number; };
@@ -54,6 +54,9 @@
   let allCollections: Collection[] = $state([]);
   let titleCollections: number[] = $state([]);
 
+  let editingNotes = $state(false);
+  let notesInput = $state('');
+
   const tmdbId = $derived(Number(page.params.tmdb_id));
   const mediaType = $derived((page.url.searchParams.get('type') ?? 'movie') as string);
   const isTv = $derived(mediaType === 'tv');
@@ -73,7 +76,7 @@
         invoke<UserTitleData>('get_user_title_data', {
           tmdbId,
           typeField: mediaType,
-        }).catch(() => ({ user_title_id: null, status: null, rating: null, added_at: null } as UserTitleData)),
+        }).catch(() => ({ user_title_id: null, status: null, rating: null, notes: null, added_at: null } as UserTitleData)),
       ]);
       details = d;
       userData = u;
@@ -189,6 +192,21 @@
       savingRating = false;
     }
   }
+
+  async function saveNotes() {
+    if (!userData?.user_title_id) return;
+    try {
+      const trimmed = notesInput.trim() || null;
+      await invoke('update_title_notes', {
+        userTitleId: userData.user_title_id,
+        notes: trimmed,
+      });
+      userData = { ...userData, notes: trimmed };
+      editingNotes = false;
+    } catch (e) {
+      console.error(e);
+    }
+  }
 </script>
 
 <div class="max-w-6xl mx-auto">
@@ -263,6 +281,40 @@
               </div>
             {/if}
           </div>
+
+          {#if userData?.user_title_id}
+            <div class="mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-surface/80 border border-border">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs uppercase tracking-wider text-zinc-500">{$t('title_page.your_notes')}</p>
+                {#if editingNotes}
+                  <div class="flex gap-1">
+                    <button onclick={saveNotes} class="w-7 h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center">
+                      <Check size={14} />
+                    </button>
+                    <button onclick={() => editingNotes = false} class="w-7 h-7 rounded-md bg-surface border border-border text-zinc-400 hover:text-zinc-100 flex items-center justify-center">
+                      <X size={14} />
+                    </button>
+                  </div>
+                {:else}
+                  <button onclick={() => { editingNotes = true; notesInput = userData?.notes ?? ''; }} class="w-7 h-7 rounded-md text-zinc-500 hover:text-gold transition-colors flex items-center justify-center">
+                    <Pencil size={14} />
+                  </button>
+                {/if}
+              </div>
+              {#if editingNotes}
+                <textarea
+                  bind:value={notesInput}
+                  class="w-full px-3 py-2 bg-ink-light border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none resize-none text-sm"
+                  rows="3"
+                  placeholder={$t('diary.notes_placeholder')}
+                ></textarea>
+              {:else if userData.notes}
+                <p class="text-sm text-zinc-300 whitespace-pre-wrap">{userData.notes}</p>
+              {:else}
+                <p class="text-xs text-zinc-500 italic">{$t('diary.notes_empty')}</p>
+              {/if}
+            </div>
+          {/if}
 
           {#if userData?.user_title_id}
             <div class="mb-4 md:mb-6">
@@ -372,7 +424,7 @@
           {#each details.cast as member}
             <div class="rounded-xl bg-surface border border-border overflow-hidden">
               {#if member.profile_url}
-                <div class="aspect-[2/3] overflow-hidden bg-ink-light"><img src={member.profile_url} alt={member.name} class="w-full h-full object-cover" /></div>
+                <div class="aspect-[2/3] overflow-hidden bg-ink-light"><img src={member.profile_url} alt={member.name} loading="lazy" decoding="async" class="w-full h-full object-cover" /></div>
               {:else}
                 <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={24} /></div>
               {/if}

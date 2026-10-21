@@ -24,6 +24,13 @@ tokio = { version = "1", features = ["full"] }
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-fs = "2.7.1"
 
+# --- Синхронизация ---
+mdns-sd = "0.13"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+
 [profile.release]
 codegen-units = 1
 lto = true

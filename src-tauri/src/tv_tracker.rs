@@ -1,10 +1,12 @@
 use crate::db::Database;
 use crate::models::EpisodeWithStatus;
+use crate::sync::log;
 use tauri::State;
+use std::sync::Arc;
 
 #[tauri::command]
 pub async fn get_tv_seasons(
-    db: State<'_, Database>, tmdb_id: i64, api_key: Option<String>, locale: String,
+    db: State<'_, Arc<Database>>, tmdb_id: i64, api_key: Option<String>, locale: String,
 ) -> Result<Vec<crate::tmdb::TvSeason>, String> {
     let cached: Option<Vec<crate::tmdb::TvSeason>> = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -22,7 +24,7 @@ pub async fn get_tv_seasons(
                          (SELECT COUNT(*) FROM user_episodes ue JOIN episodes e ON e.id = ue.episode_id WHERE e.season_id = s.id) as watched_count
                          FROM seasons s WHERE s.title_id = ?1 ORDER BY s.tmdb_season_number ASC"
                     ).map_err(|e| e.to_string())?;
-                    
+
                     let seasons = stmt.query_map([title_id], |row| Ok(crate::tmdb::TvSeason {
                         season_number: row.get(0)?,
                         name: row.get(1)?,
@@ -70,7 +72,7 @@ pub async fn get_tv_seasons(
 
 #[tauri::command]
 pub async fn get_season_episodes(
-    db: State<'_, Database>, tmdb_id: i64, season_number: i64, api_key: Option<String>, locale: String,
+    db: State<'_, Arc<Database>>, tmdb_id: i64, season_number: i64, api_key: Option<String>, locale: String,
 ) -> Result<Vec<EpisodeWithStatus>, String> {
     let (season_id, cached): (i64, Option<Vec<EpisodeWithStatus>>) = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
@@ -129,10 +131,9 @@ pub async fn get_season_episodes(
 }
 
 #[tauri::command]
-pub fn mark_episode_watched(db: State<Database>, episode_id: i64, watched: bool) -> Result<Vec<crate::models::Achievement>, String> {
+pub fn mark_episode_watched(db: State<'_, Arc<Database>>, episode_id: i64, watched: bool) -> Result<Vec<crate::models::Achievement>, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    // XP за эпизод: +2 при отметке, 0 при снятии
     let xp_delta = if watched { 2 } else { 0 };
 
     if watched {
@@ -158,12 +159,32 @@ pub fn mark_episode_watched(db: State<Database>, episode_id: i64, watched: bool)
         }
     }
 
-    // Начисляем XP за эпизод
     if xp_delta > 0 {
         crate::achievements::award_xp_internal(&conn, xp_delta)?;
     }
 
-    // Проверяем ачивки
+    // лог
+    if watched {
+        let _ = log::record_user_episode(&conn, episode_id);
+    } else {
+        if let Ok((tmdb_id_opt, season_num, ep_num, type_field)) = conn.query_row(
+            "SELECT t.tmdb_id, s.tmdb_season_number, e.tmdb_episode_number, t.type
+             FROM episodes e JOIN seasons s ON s.id = e.season_id
+             JOIN titles t ON t.id = s.title_id
+             WHERE e.id = ?1",
+            [episode_id],
+            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, String>(3)?)),
+        ) {
+            if let Some(tmdb) = tmdb_id_opt {
+                let _ = log::record_user_episode_deleted(&conn, &type_field, tmdb, season_num, ep_num);
+            }
+        }
+    }
+    if let Some(ut_id) = user_title_id {
+        let _ = log::record_user_title(&conn, ut_id);
+    }
+    let _ = log::record_profile(&conn);
+
     crate::achievements::check_achievements_internal(&conn)
 }
 
@@ -234,18 +255,17 @@ pub async fn mark_all_episodes_watched_internal(
 
     let unlocked = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        
-        // Считаем, сколько новых эпизодов будет отмечено (для XP)
+
         let already_watched: i64 = conn.query_row(
             "SELECT COUNT(*) FROM user_episodes ue JOIN episodes e ON e.id = ue.episode_id JOIN seasons s ON s.id = e.season_id WHERE s.title_id = ?1",
             [title_id], |r| r.get(0)
         ).unwrap_or(0);
-        
+
         let total_eps: i64 = conn.query_row(
             "SELECT COUNT(*) FROM episodes e JOIN seasons s ON s.id = e.season_id WHERE s.title_id = ?1",
             [title_id], |r| r.get(0)
         ).unwrap_or(0);
-        
+
         let new_eps = total_eps - already_watched;
         let xp_gained = new_eps * 2;
 
@@ -256,12 +276,11 @@ pub async fn mark_all_episodes_watched_internal(
              WHERE s.title_id = ?1",
             [title_id],
         ).map_err(|e| e.to_string())?;
-        
-        // Начисляем XP за новые эпизоды
+
         if xp_gained > 0 {
             crate::achievements::award_xp_internal(&conn, xp_gained)?;
         }
-        
+
         crate::achievements::check_achievements_internal(&conn)?
     };
 
@@ -270,7 +289,7 @@ pub async fn mark_all_episodes_watched_internal(
 
 #[tauri::command]
 pub async fn mark_all_episodes_watched(
-    db: State<'_, Database>,
+    db: State<'_, Arc<Database>>,
     tmdb_id: i64,
     api_key: Option<String>,
     locale: String,

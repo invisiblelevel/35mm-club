@@ -99,7 +99,11 @@
     "title": "Diary",
     "subtitle": "Watch history with dates and ratings",
     "empty": "Diary is empty",
-    "empty_hint": "Mark watches — history will appear here"
+    "empty_hint": "Mark watches — history will appear here",
+	"tab_all": "All",
+    "notes_placeholder": "Short note...",
+    "notes_empty": "No note",
+    "edit_notes": "Edit note"
   },
   "achievements": {
     "title": "Achievements",
@@ -193,7 +197,29 @@
     "export_error": "Export error: {error}",
     "import_confirm": "Import will replace the entire current library and progress. Continue?",
     "import_done": "Import completed. Reload the app.",
-    "import_error": "Import error: {error}"
+    "import_error": "Import error: {error}",
+	"section_sync": "Wi-Fi Sync",
+    "sync_hint": "Press the button on any device in the same Wi-Fi network — devices will find each other and exchange changes. First time you'll need to confirm the connection.",
+    "sync_this_device": "This device",
+    "sync_rename": "Rename",
+    "sync_button": "Sync",
+    "sync_button_busy": "Syncing...",
+    "sync_idle": "Ready to sync",
+    "sync_discovering": "Searching for devices...",
+    "sync_awaiting": "New devices found — confirm the connection",
+    "sync_syncing": "Syncing with {peer}...",
+    "sync_done": "Synced with {peer}: ↑{pushed} ↓{pulled}",
+	"sync_error_firewall": "Could not connect. Windows Firewall is likely blocking sync. On first launch, click \"Allow access\" when Windows asks. If that doesn't help, add a rule for port 47820 in firewall settings.",
+    "sync_last": "Last sync: {time} with {peer}",
+    "sync_peers": "Connected devices",
+    "sync_forget": "Forget device",
+    "sync_forget_confirm": "Forget this device? You'll have to confirm the connection again.",
+    "sync_pair_title": "Connect device?",
+    "sync_pair_description": "New devices found in this Wi-Fi network. Confirm the connection to sync your library.",
+    "sync_pair_button": "Connect",
+    "sync_toast_done": "Synced",
+    "sync_toast_pairing": "New device found",
+    "sync_toast_pairing_hint": "Open Settings → Sync to connect"
   },
   "status": {
     "watching": "Watching",
@@ -233,6 +259,7 @@
     "episodes_not_found": "No episodes found",
     "add_to_collection": "Add to collection",
 	"progress": "Watch progress",
-"fully_watched": "Fully watched!"
+    "fully_watched": "Fully watched!",
+    "your_notes": "Your notes"
   }
 }

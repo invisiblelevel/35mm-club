@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS user_episodes (
 
 -- ------------------------------------------------------------
 -- 6. СЕТЕВАЯ СИНХРОНИЗАЦИЯ (БУДУЩЕЕ)
+-- sync_log создаётся в 002_sync.sql (новая структура).
 -- ------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS auth_session (
@@ -206,15 +207,6 @@ CREATE TABLE IF NOT EXISTS auth_session (
     refresh_token           TEXT,
     expires_at              INTEGER,
     last_login_at           TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS sync_log (
-    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-    entity_type             TEXT NOT NULL CHECK(entity_type IN ('profile', 'title', 'achievement', 'friend')),
-    entity_id               INTEGER,
-    action                  TEXT NOT NULL CHECK(action IN ('insert', 'update', 'delete')),
-    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
-    synced_at               TEXT
 );
 
 CREATE TABLE IF NOT EXISTS friends (
@@ -296,6 +288,7 @@ INSERT OR IGNORE INTO sync_state (id) VALUES (1);
 
 -- ------------------------------------------------------------
 -- 7. ИНДЕКСЫ
+-- (индексы на sync_log создаются в 002_sync.sql)
 -- ------------------------------------------------------------
 
 CREATE INDEX IF NOT EXISTS idx_user_titles_status ON user_titles(status);
@@ -305,7 +298,6 @@ CREATE INDEX IF NOT EXISTS idx_watch_entries_user_title ON watch_entries(user_ti
 CREATE INDEX IF NOT EXISTS idx_seasons_title ON seasons(title_id);
 CREATE INDEX IF NOT EXISTS idx_episodes_season ON episodes(season_id);
 CREATE INDEX IF NOT EXISTS idx_user_episodes_ep ON user_episodes(episode_id);
-CREATE INDEX IF NOT EXISTS idx_sync_log_pending ON sync_log(synced_at) WHERE synced_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(user_remote_id, status);
 CREATE INDEX IF NOT EXISTS idx_friends_friend ON friends(friend_remote_id, status);
 CREATE INDEX IF NOT EXISTS idx_friend_requests_to ON friend_requests(to_remote_id, status);
@@ -393,6 +385,48 @@ VALUES
     ('conjuring_universe', 'franchise', 'game-icons:gothic-cross', 60, 'global', 'epic', 'collection_id', 313086, 4, 0, 'achievements.ach.conjuring_universe.title', 'achievements.ach.conjuring_universe.desc'),
     ('planet_of_apes', 'franchise', 'game-icons:monkey', 50, 'global', 'epic', 'collection_id', 173710, 4, 0, 'achievements.ach.planet_of_apes.title', 'achievements.ach.planet_of_apes.desc'),
     ('kingsman_manners', 'franchise', 'game-icons:umbrella', 50, 'global', 'epic', 'collection_id', 391860, 3, 0, 'achievements.ach.kingsman_manners.title', 'achievements.ach.kingsman_manners.desc'),
+	-- 20 фильмовых ачивок (пачка 1)
+    ('movie_bond', 'franchise', 'game-icons:martini', 80, 'global', 'legendary', 'collection_id', 645, 27, 0, 'achievements.ach.movie_bond.title', 'achievements.ach.movie_bond.desc'),
+    ('movie_avatar', 'franchise', 'game-icons:alien-bug', 80, 'global', 'epic', 'collection_id', 87096, 2, 0, 'achievements.ach.movie_avatar.title', 'achievements.ach.movie_avatar.desc'),
+    ('movie_brat', 'franchise', 'game-icons:uzi', 60, 'global', 'epic', 'collection_id', 218293, 2, 0, 'achievements.ach.movie_brat.title', 'achievements.ach.movie_brat.desc'),
+    ('movie_xmen', 'franchise', 'game-icons:crossed-swords', 80, 'global', 'epic', 'collection_id', 748, 13, 0, 'achievements.ach.movie_xmen.title', 'achievements.ach.movie_xmen.desc'),
+    ('movie_taken', 'franchise', 'game-icons:phone', 60, 'global', 'epic', 'collection_id', 135483, 3, 0, 'achievements.ach.movie_taken.title', 'achievements.ach.movie_taken.desc'),
+    ('movie_bumer', 'franchise', 'game-icons:car-key', 60, 'global', 'epic', 'collection_id', 107461, 2, 0, 'achievements.ach.movie_bumer.title', 'achievements.ach.movie_bumer.desc'),
+    ('movie_home_alone', 'franchise', 'game-icons:christmas-tree', 50, 'global', 'rare', 'collection_id', 9888, 4, 0, 'achievements.ach.movie_home_alone.title', 'achievements.ach.movie_home_alone.desc'),
+    ('movie_wrong_turn', 'franchise', 'game-icons:axe-in-stump', 60, 'global', 'epic', 'collection_id', 52985, 6, 0, 'achievements.ach.movie_wrong_turn.title', 'achievements.ach.movie_wrong_turn.desc'),
+    ('movie_red', 'franchise', 'game-icons:revolver', 60, 'global', 'epic', 'collection_id', 163902, 2, 0, 'achievements.ach.movie_red.title', 'achievements.ach.movie_red.desc'),
+    ('movie_jaws', 'franchise', 'game-icons:shark-fin', 70, 'global', 'epic', 'collection_id', 2366, 4, 0, 'achievements.ach.movie_jaws.title', 'achievements.ach.movie_jaws.desc'),
+    ('movie_kick_ass', 'franchise', 'game-icons:knife-thrust', 60, 'global', 'epic', 'collection_id', 179892, 2, 0, 'achievements.ach.movie_kick_ass.title', 'achievements.ach.movie_kick_ass.desc'),
+    ('movie_riddick', 'franchise', 'game-icons:knife-thrust', 70, 'global', 'epic', 'collection_id', 2794, 3, 0, 'achievements.ach.movie_riddick.title', 'achievements.ach.movie_riddick.desc'),
+    ('movie_28_days', 'franchise', 'game-icons:shambling-zombie', 70, 'global', 'epic', 'collection_id', 1565, 3, 0, 'achievements.ach.movie_28_days.title', 'achievements.ach.movie_28_days.desc'),
+    ('movie_jurassic', 'franchise', 'game-icons:dinosaur', 80, 'global', 'legendary', 'collection_id', 328, 7, 0, 'achievements.ach.movie_jurassic.title', 'achievements.ach.movie_jurassic.desc'),
+    ('movie_jeepers', 'franchise', 'game-icons:bat', 50, 'global', 'rare', 'collection_id', 94899, 3, 0, 'achievements.ach.movie_jeepers.title', 'achievements.ach.movie_jeepers.desc'),
+    ('movie_bttf', 'franchise', 'game-icons:time-trap', 80, 'global', 'legendary', 'collection_id', 264, 3, 0, 'achievements.ach.movie_bttf.title', 'achievements.ach.movie_bttf.desc'),
+    ('movie_police_academy', 'franchise', 'game-icons:police-officer-head', 50, 'global', 'rare', 'collection_id', 9338, 7, 0, 'achievements.ach.movie_police_academy.title', 'achievements.ach.movie_police_academy.desc'),
+    ('movie_nightmare', 'franchise', 'game-icons:claws', 70, 'global', 'epic', 'collection_id', 8581, 7, 0, 'achievements.ach.movie_nightmare.title', 'achievements.ach.movie_nightmare.desc'),
+    ('movie_hobbit', 'franchise', 'game-icons:dragon-head', 70, 'global', 'epic', 'collection_id', 121938, 3, 0, 'achievements.ach.movie_hobbit.title', 'achievements.ach.movie_hobbit.desc'),
+    ('movie_die_hard', 'franchise', 'game-icons:skyscraper', 80, 'global', 'legendary', 'collection_id', 1570, 5, 0, 'achievements.ach.movie_die_hard.title', 'achievements.ach.movie_die_hard.desc'),
+	    -- 20 ачивок «Подвалы TMDb и Психиатрия»
+    ('movie_gruz_200', 'humor', 'game-icons:coffin', 60, 'global', 'epic', 'movie_id', 34869, 1, 0, 'achievements.ach.movie_gruz_200.title', 'achievements.ach.movie_gruz_200.desc'),
+    ('movie_human_centipede', 'humor', 'game-icons:centipede', 70, 'global', 'epic', 'movie_id', 37169, 1, 0, 'achievements.ach.movie_human_centipede.title', 'achievements.ach.movie_human_centipede.desc'),
+    ('movie_salo', 'humor', 'game-icons:feces', 70, 'global', 'epic', 'movie_id', 5336, 1, 0, 'achievements.ach.movie_salo.title', 'achievements.ach.movie_salo.desc'),
+    ('movie_serbian_film', 'humor', 'game-icons:blood', 80, 'global', 'legendary', 'movie_id', 73861, 1, 0, 'achievements.ach.movie_serbian_film.title', 'achievements.ach.movie_serbian_film.desc'),
+    ('movie_eraserhead', 'humor', 'game-icons:brain', 60, 'global', 'epic', 'movie_id', 985, 1, 0, 'achievements.ach.movie_eraserhead.title', 'achievements.ach.movie_eraserhead.desc'),
+    ('movie_pink_flamingos', 'humor', 'game-icons:flamingo', 70, 'global', 'epic', 'movie_id', 692, 1, 0, 'achievements.ach.movie_pink_flamingos.title', 'achievements.ach.movie_pink_flamingos.desc'),
+    ('movie_antichrist', 'humor', 'game-icons:deer', 70, 'global', 'epic', 'movie_id', 17609, 1, 0, 'achievements.ach.movie_antichrist.title', 'achievements.ach.movie_antichrist.desc'),
+    ('movie_das_experiment', 'humor', 'game-icons:prisoner', 60, 'global', 'epic', 'movie_id', 575, 1, 0, 'achievements.ach.movie_das_experiment.title', 'achievements.ach.movie_das_experiment.desc'),
+    ('movie_dogtooth', 'humor', 'game-icons:tooth', 60, 'global', 'epic', 'movie_id', 38810, 1, 0, 'achievements.ach.movie_dogtooth.title', 'achievements.ach.movie_dogtooth.desc'),
+    ('movie_under_the_skin', 'humor', 'game-icons:cloak', 60, 'global', 'epic', 'movie_id', 97370, 1, 0, 'achievements.ach.movie_under_the_skin.title', 'achievements.ach.movie_under_the_skin.desc'),
+    ('movie_holy_mountain', 'humor', 'game-icons:pyramid', 70, 'global', 'epic', 'movie_id', 8327, 1, 0, 'achievements.ach.movie_holy_mountain.title', 'achievements.ach.movie_holy_mountain.desc'),
+    ('movie_twin_peaks_fire', 'humor', 'game-icons:owl', 70, 'global', 'epic', 'movie_id', 1923, 1, 0, 'achievements.ach.movie_twin_peaks_fire.title', 'achievements.ach.movie_twin_peaks_fire.desc'),
+    ('movie_pi', 'humor', 'game-icons:pi-symbol', 60, 'global', 'epic', 'movie_id', 473, 1, 0, 'achievements.ach.movie_pi.title', 'achievements.ach.movie_pi.desc'),
+    ('movie_dead_man', 'humor', 'game-icons:cowboy-hat', 60, 'global', 'epic', 'movie_id', 922, 1, 0, 'achievements.ach.movie_dead_man.title', 'achievements.ach.movie_dead_man.desc'),
+    ('movie_sexual_parasite', 'humor', 'game-icons:parasite', 80, 'global', 'legendary', 'movie_id', 45676, 1, 0, 'achievements.ach.movie_sexual_parasite.title', 'achievements.ach.movie_sexual_parasite.desc'),
+    ('movie_cannibal_holocaust', 'humor', 'game-icons:skull-crossed-bones', 80, 'global', 'legendary', 'movie_id', 8689, 1, 0, 'achievements.ach.movie_cannibal_holocaust.title', 'achievements.ach.movie_cannibal_holocaust.desc'),
+    ('movie_hard_to_be_god', 'humor', 'game-icons:chess-king', 70, 'global', 'epic', 'movie_id', 64508, 1, 0, 'achievements.ach.movie_hard_to_be_god.title', 'achievements.ach.movie_hard_to_be_god.desc'),
+    ('movie_five_bottles', 'humor', 'game-icons:vodka', 60, 'global', 'epic', 'movie_id', 211807, 1, 0, 'achievements.ach.movie_five_bottles.title', 'achievements.ach.movie_five_bottles.desc'),
+    ('movie_toxic_avenger', 'humor', 'game-icons:radioactive', 70, 'global', 'epic', 'movie_id', 15239, 1, 0, 'achievements.ach.movie_toxic_avenger.title', 'achievements.ach.movie_toxic_avenger.desc'),
+    ('movie_blood_feast', 'humor', 'game-icons:meat', 70, 'global', 'epic', 'movie_id', 28172, 1, 0, 'achievements.ach.movie_blood_feast.title', 'achievements.ach.movie_blood_feast.desc'),
 
     -- DIRECTOR / ACTOR / TIME
     ('nolan_time', 'director', 'game-icons:clockwork', 80, 'global', 'legendary', 'director_contains', 525, 10, 0, 'achievements.ach.nolan_time.title', 'achievements.ach.nolan_time.desc'),
@@ -452,7 +486,19 @@ VALUES
     ('anime_fullmetal_alchemist', 'anime', 'game-icons:transfuse', 150, 'global', 'legendary', 'anime_episodes_completed', 5114, 1, 0, 'achievements.ach.anime_fullmetal_alchemist.title', 'achievements.ach.anime_fullmetal_alchemist.desc'),
     ('anime_bleach', 'anime', 'game-icons:katana', 200, 'global', 'legendary', 'anime_episodes_completed', 269, 1, 0, 'achievements.ach.anime_bleach.title', 'achievements.ach.anime_bleach.desc'),
     ('anime_sword_art_online', 'anime', 'game-icons:crossed-swords', 80, 'global', 'epic', 'anime_episodes_completed', 11757, 1, 0, 'achievements.ach.anime_sword_art_online.title', 'achievements.ach.anime_sword_art_online.desc'),
-    ('anime_berserk', 'anime', 'game-icons:sword-wound', 120, 'global', 'epic', 'anime_episodes_completed', 33, 1, 0, 'achievements.ach.anime_berserk.title', 'achievements.ach.anime_berserk.desc')
+    ('anime_berserk', 'anime', 'game-icons:sword-wound', 120, 'global', 'epic', 'anime_episodes_completed', 33, 1, 0, 'achievements.ach.anime_berserk.title', 'achievements.ach.anime_berserk.desc'),
+	
+	    -- Ачивки за списки
+    ('status_planned_10', 'progress', 'game-icons:clock', 30, 'global', 'common', 'status_planned', 10, 1, 0, 'achievements.ach.status_planned_10.title', 'achievements.ach.status_planned_10.desc'),
+    ('status_planned_50', 'progress', 'game-icons:calendar', 80, 'global', 'rare', 'status_planned', 50, 1, 0, 'achievements.ach.status_planned_50.title', 'achievements.ach.status_planned_50.desc'),
+    ('status_planned_100', 'progress', 'game-icons:scroll-quill', 150, 'global', 'epic', 'status_planned', 100, 1, 0, 'achievements.ach.status_planned_100.title', 'achievements.ach.status_planned_100.desc'),
+    ('status_planned_300', 'progress', 'game-icons:bookshelf', 300, 'global', 'legendary', 'status_planned', 300, 1, 0, 'achievements.ach.status_planned_300.title', 'achievements.ach.status_planned_300.desc'),
+    ('status_on_hold_10', 'progress', 'game-icons:hourglass', 30, 'global', 'common', 'status_on_hold', 10, 1, 0, 'achievements.ach.status_on_hold_10.title', 'achievements.ach.status_on_hold_10.desc'),
+    ('status_on_hold_50', 'progress', 'game-icons:pause-button', 80, 'global', 'rare', 'status_on_hold', 50, 1, 0, 'achievements.ach.status_on_hold_50.title', 'achievements.ach.status_on_hold_50.desc'),
+    ('status_on_hold_100', 'progress', 'game-icons:sleeping-bag', 150, 'global', 'epic', 'status_on_hold', 100, 1, 0, 'achievements.ach.status_on_hold_100.title', 'achievements.ach.status_on_hold_100.desc'),
+    ('status_dropped_10', 'progress', 'game-icons:trash-can', 30, 'global', 'common', 'status_dropped', 10, 1, 0, 'achievements.ach.status_dropped_10.title', 'achievements.ach.status_dropped_10.desc'),
+    ('status_dropped_50', 'progress', 'game-icons:broken-bone', 80, 'global', 'rare', 'status_dropped', 50, 1, 0, 'achievements.ach.status_dropped_50.title', 'achievements.ach.status_dropped_50.desc'),
+    ('status_dropped_100', 'progress', 'game-icons:grave', 150, 'global', 'epic', 'status_dropped', 100, 1, 0, 'achievements.ach.status_dropped_100.title', 'achievements.ach.status_dropped_100.desc')
 ON CONFLICT(code) DO UPDATE SET
     category = excluded.category,
     icon = excluded.icon,
