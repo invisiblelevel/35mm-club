@@ -53,6 +53,14 @@ pub fn run() {
             let sync_state = SyncState::new(0); // порт узнаем после bind
             app.manage(sync_state);
 
+            // Android: захватываем MulticastLock для mDNS
+            #[cfg(target_os = "android")]
+            {
+                if let Err(e) = sync::android_multicast::acquire() {
+                    eprintln!("[sync] MulticastLock: {}", e);
+                }
+            }
+
             // Запускаем listener и mDNS в фоне
             let app_handle = app.handle().clone();
             let db_clone = database.clone();
@@ -69,18 +77,7 @@ pub fn run() {
                     }
                 };
 
-                // 2. Обновляем порт в SyncState
-                // (SyncState::new(0) → перезаписываем)
-                // Проще: сделать SyncState.port через Arc<AtomicU16>, но здесь
-                // просто запустим listener на найденном порту, а state будет знать.
-                // Так как SyncState хранит u16, а он уже создан — пересоздаём.
-                // Хак: используем listener_port как есть — пересоздать нельзя.
-                // Поэтому: используем порт из state, но state создали с 0...
-                //
-                // РЕШЕНИЕ: SyncState.listener_port — не нужен после старта.
-                // Используем локальную переменную port.
-
-                // 3. Запускаем TCP listener
+                // 2. Запускаем TCP listener
                 match sync::transport::start_listener(
                     db_clone.clone(),
                     identity_clone.device_id.clone(),
@@ -89,7 +86,7 @@ pub fn run() {
                     Ok(actual_port) => {
                         println!("[sync] listener on port {}", actual_port);
 
-                        // 4. Регистрируем mDNS
+                        // 3. Регистрируем mDNS
                         match sync::discovery::register_service(
                             &identity_clone.device_id,
                             &identity_clone.device_name,
@@ -107,8 +104,6 @@ pub fn run() {
                     Err(e) => eprintln!("[sync] listener start: {}", e),
                 }
 
-                // 5. Слушаем событие закрытия приложения
-                // (опционально, позже)
                 let _ = (&app_handle, &app_dir_clone);
             });
 
@@ -141,6 +136,10 @@ pub fn run() {
             commands::update_anime_progress,
             commands::export_data,
             commands::import_data,
+			diary_collections::get_rewatches,
+			diary_collections::get_all_rewatches,
+            diary_collections::add_rewatch,
+            diary_collections::delete_rewatch,
             tv_tracker::get_tv_seasons,
             tv_tracker::get_season_episodes,
             tv_tracker::mark_episode_watched,

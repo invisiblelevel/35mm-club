@@ -103,7 +103,25 @@
 	"tab_all": "All",
     "notes_placeholder": "Short note...",
     "notes_empty": "No note",
-    "edit_notes": "Edit note"
+    "edit_notes": "Edit note",
+	"rewatch_badge": "Rewatch"
+  },
+    "rewatch": {
+    "button": "Rewatch",
+    "modal_title": "Log a rewatch",
+    "modal_description": "How many times have you watched this title?",
+    "rating": "Rating",
+    "notes": "Note",
+    "notes_placeholder": "What did you notice on this rewatch?",
+    "save": "Save",
+    "cancel": "Cancel",
+    "count": "Rewatched: {count} times",
+    "saved": "Rewatch logged",
+    "show_list": "Show all",
+    "hide_list": "Collapse",
+	"diary_tab": "Rewatches",
+    "empty": "No rewatches yet",
+    "empty_hint": "Open a title and tap «Rewatch» to log one."
   },
   "achievements": {
     "title": "Achievements",

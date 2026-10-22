@@ -2,7 +2,7 @@
 
 **Your cinema. Your rules.** · **Твоя кинотека. Твои правила.** · **你的影院。你的规则。**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](../../releases)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Android%208%2B-0078D6.svg)](#install)
 [![Tauri](https://img.shields.io/badge/tauri-2.12-24C8DB.svg)](https://tauri.app/)
@@ -25,12 +25,13 @@ Add a title → track episodes → earn achievements → level up. Everything ha
 
 - **Three content types** — movies, TV shows, anime
 - **Episode tracker** — seasons, episodes, watch progress
-- **90+ achievements** — Common, Rare, Epic, Legendary, with custom icons and descriptions
+- **400+ achievements** — Common, Rare, Epic, Legendary, with custom icons and descriptions
 - **Ranks and XP** — 10 military-style ranks from Private to General
 - **Ribbon rack (kokarda)** — unlocks at level 20 (Major) and grows with level and achievements
 - **Wi-Fi sync** — one button on any device in the same network; syncs library, achievements, diary, notes and collections between your PC and phone. Pair once, then silent. No clouds, no accounts.
+- **Rewatch Tracker** — log rewatches with rating and notes, see how many times you've watched each title. Compact list, no clutter.
+- **Diary** — watch history with dates, ratings and notes, plus a dedicated **Rewatches** tab with all your rewatches across the library
 - **Custom collections** — your own lists with posters preview
-- **Diary** — watch history with dates, ratings and notes
 - **Ratings** — half-star precision (0.5–10.0) for movies, TV and anime
 - **Anime progress** — episode counter with auto-complete detection
 - **Backup & restore** — export the entire library, achievements, diary and collections to a single JSON file; import it on another device
@@ -46,12 +47,13 @@ Add a title → track episodes → earn achievements → level up. Everything ha
 | Movies (count) | 8 | Popcorn Lover, Sofa Critic, Architect of Matrix |
 | TV (count) | 8 | Pilot Dinner, Live Netflix, Master of Binge-Watching |
 | Anime (count) | 8 | TV Tourist, Hardened Otaku, Anime Deity |
-| Movie franchises | 30+ | Potterhead, Fast Family, Marvel Fatigue |
-| TV shows | 24 | Breaking Bad Cook, GOT Coffee Cup, Friends Pivot |
-| Anime titles | 20+ | Naruto Legend, Drug Cat, Alpha Pathos |
+| Movie franchises | 50+ | Potterhead, Fast Family, Marvel Fatigue |
+| TV shows | 90+ | Breaking Bad Cook, GOT Coffee Cup, Friends Pivot |
+| Anime titles | 100+ | Naruto Legend, Drug Cat, Alpha Pathos |
 | Humor / memes | 12 | Not the Bees, It's Morbin' Time, Sweet Bread |
 | Director / actor | 6 | Nolan Approves, Tarantino Feet, Cage Fever |
 | Time / runtime | 5 | Night Owl, Ancient Fossil, Marathon Endurance |
+| Rewatch | 4 | Rewatcher, Movie Masochist, Eternal Loop, Memory Collector |
 
 ### Wi-Fi Sync
 
@@ -63,11 +65,11 @@ Sync your library between PC and phone over local Wi-Fi. No cloud, no accounts, 
 4. On the other device, confirm the connection once (a popup will appear).
 5. Done. Next time just press **Sync** — it works silently.
 
-**What gets synced:** library (movies, TV, anime), ratings, notes, watch progress, achievements, diary, collections. Resolves conflicts by most-recent change.
+**What gets synced:** library (movies, TV, anime), ratings, notes, watch progress, achievements, diary, collections, rewatches. Resolves conflicts by most-recent change.
 
 **Not synced:** settings (theme, language), episode metadata (each device fetches its own).
 
-> **Note for Windows users:** On first sync, Windows Firewall may ask for network access — click **Allow**. If you missed it, the app will show an error with instructions.
+> **Note for Windows users:** On first sync, Windows Firewall may ask for network access — click **Allow**. If you missed it, the app will show an error with instructions. The installer now adds a firewall rule automatically.
 
 ### Tech Stack
 
@@ -75,9 +77,9 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### Install
 
-**Windows:** Download **35mm Club Setup v1.1.0.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
+**Windows:** Download **35mm Club Setup v1.1.1.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
 
-**Android:** Download **35mm Club v1.1.0.apk** from [Releases](../../releases), allow installation from unknown sources, install.
+**Android:** Download **35mm Club v1.1.1.apk** from [Releases](../../releases), allow installation from unknown sources, install.
 
 Windows 10 version 1903 or newer / Windows 11 (64-bit) · Android 8.0 or newer.
 
@@ -131,12 +133,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 - **Три типа контента** — фильмы, сериалы, аниме
 - **Трекер серий** — сезоны, эпизоды, прогресс просмотра
-- **90+ ачивок** — Common, Rare, Epic, Legendary, с кастомными иконками и описаниями
+- **400+ ачивок** — Common, Rare, Epic, Legendary, с кастомными иконками и описаниями
 - **Звания и XP** — 10 военных званий от Рядового до Генерала
 - **Кокарда (планки)** — открывается на 20 уровне (Майор) и растёт вместе с уровнем и ачивками
 - **Синхронизация по Wi-Fi** — одна кнопка на любом устройстве в одной сети; синкает библиотеку, ачивки, дневник, заметки и коллекции между ПК и телефоном. Один раз подтвердил — дальше молча. Без облаков и аккаунтов.
+- **Пересмотры** — записывай пересмотры с оценкой и заметкой, смотри, сколько раз ты пересматривал каждый тайтл. Компактный список, без простыней.
+- **Дневник** — история просмотров с датами, оценками и заметками + отдельная вкладка **«Пересмотры»** со всеми пересмотрами по библиотеке
 - **Кастомные коллекции** — свои списки с превью постеров
-- **Дневник** — история просмотров с датами, оценками и заметками
 - **Рейтинги** — с точностью до половины звезды (0.5–10.0) для фильмов, сериалов и аниме
 - **Прогресс аниме** — счётчик серий с авто-определением завершения
 - **Бэкап и восстановление** — экспорт всей библиотеки, ачивок, дневника и коллекций в один JSON-файл; импорт на другом устройстве
@@ -152,12 +155,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 | Фильмы (счётчик) | 8 | Любитель попкорна, Диванный кинокритик, Архитектор матриц |
 | Сериалы (счётчик) | 8 | Ужин под пилот, Живой Netflix, Мастер запойного просмотра |
 | Аниме (счётчик) | 8 | Турист из телевизора, Прожжённый отаку, Аниме-божество |
-| Франшизы фильмов | 30+ | Главный Гриффиндорщик, За семью и 1/4 мили, Жертва конвейера |
-| Сериалы | 24 | Настоящий химик, Стаканчик из Старбакса, ДРУЗЬЯ: ВЕЧНЫЙ ПОВТОР |
-| Аниме-тайтлы | 20+ | Легенда скрытого листа, Кот-наркоман, Альфа-пафос |
+| Франшизы фильмов | 50+ | Главный Гриффиндорщик, За семью и 1/4 мили, Жертва конвейера |
+| Сериалы | 90+ | Настоящий химик, Стаканчик из Старбакса, ДРУЗЬЯ: ВЕЧНЫЙ ПОВТОР |
+| Аниме-тайтлы | 100+ | Легенда скрытого листа, Кот-наркоман, Альфа-пафос |
 | Юмор / мемы | 12 | Пчёлы! Только не пчёлы!, It's Morbin' Time!, Сладкий хлеб |
 | Режиссёры / актёры | 6 | Нолан одобряет, Ценитель женских стоп, Клетка переполнена |
 | Время / хронометраж | 5 | Полуночный сеанс, Археолог кинематографа, Попа из стали |
+| Пересмотры | 4 | Пересмотрщик, Киноман-мазохист, Вечный цикл, Коллекционер воспоминаний |
 
 ### Синхронизация по Wi-Fi
 
@@ -169,11 +173,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 4. На втором устройстве подтверди подключение один раз (всплывёт окно).
 5. Готово. В следующий раз просто жми **Синхронизировать** — работает молча.
 
-**Что синкается:** библиотека (фильмы, сериалы, аниме), рейтинги, заметки, прогресс просмотра, ачивки, дневник, коллекции. Конфликты решаются по самому свежему изменению.
+**Что синкается:** библиотека (фильмы, сериалы, аниме), рейтинги, заметки, прогресс просмотра, ачивки, дневник, коллекции, пересмотры. Конфликты решаются по самому свежему изменению.
 
 **Что не синкается:** настройки (тема, язык), метаданные серий (каждое устройство тянет само).
 
-> **Для Windows:** при первой синхронизации Windows Firewall может спросить доступ к сети — нажми **Разрешить**. Если пропустил — приложение покажет ошибку с инструкцией.
+> **Для Windows:** при первой синхронизации Windows Firewall может спросить доступ к сети — нажми **Разрешить**. Инсталлятор теперь добавляет правило автоматически. Если всё равно не работает — приложение покажет ошибку с инструкцией.
 
 ### Стек
 
@@ -181,9 +185,9 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### Установка
 
-**Windows:** Скачай **35mm Club Setup v1.1.0.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
+**Windows:** Скачай **35mm Club Setup v1.1.1.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
 
-**Android:** Скачай **35mm Club v1.1.0.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
+**Android:** Скачай **35mm Club v1.1.1.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
 
 Поддерживается Windows 10 (версия 1903+) / Windows 11 (64-bit) · Android 8.0+.
 
@@ -237,12 +241,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 - **三种内容类型** — 电影、剧集、动漫
 - **剧集追踪** — 季、集、观看进度
-- **90+ 个成就** — 普通、稀有、史诗、传奇，自定义图标和描述
+- **400+ 个成就** — 普通、稀有、史诗、传奇，自定义图标和描述
 - **军衔与经验值** — 10 个军事风格军衔，从列兵到将军
 - **勋表（кокарда）** — 20 级（少校）解锁，随等级和成就成长
 - **Wi-Fi 同步** — 在同一网络的任意设备上按一个按钮；在 PC 和手机之间同步媒体库、成就、日记、笔记和收藏集。配对一次，之后静默运行。无云端、无账号。
+- **重看追踪** — 记录重看评分和笔记，查看每部作品的重看次数。紧凑列表，不杂乱。
+- **观影日记** — 带日期、评分和笔记的观看历史，另有独立的 **「重看」** 标签页，显示整个媒体库的所有重看记录
 - **自定义收藏集** — 自己的列表，带海报预览
-- **观影日记** — 带日期、评分和笔记的观看历史
 - **评分** — 半星精度（0.5–10.0），适用于电影、剧集和动漫
 - **动漫进度** — 剧集计数器，自动检测完成
 - **备份与恢复** — 将整个媒体库、成就、日记和收藏集导出为单个 JSON 文件；可在另一台设备上导入
@@ -258,12 +263,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 | 电影（计数） | 8 | 爆米花爱好者、沙发影评人、矩阵架构师 |
 | 剧集（计数） | 8 | 试播集晚餐、活体 Netflix、刷剧大师 |
 | 动漫（计数） | 8 | 电视游客、老油条宅、动漫神明 |
-| 电影系列 | 30+ | 首席格兰芬多、为了家人和四分之一英里、流水线受害者 |
-| 剧集系列 | 24 | 真正的化学家、星巴克杯子、老友记：永恒重播 |
-| 动漫标题 | 20+ | 木叶传说、吸毒猫、阿尔法·帕福斯 |
+| 电影系列 | 50+ | 首席格兰芬多、为了家人和四分之一英里、流水线受害者 |
+| 剧集系列 | 90+ | 真正的化学家、星巴克杯子、老友记：永恒重播 |
+| 动漫标题 | 100+ | 木叶传说、吸毒猫、阿尔法·帕福斯 |
 | 幽默 / 迷因 | 12 | 蜜蜂！不要蜜蜂！、It's Morbin' Time!、甜面包 |
 | 导演 / 演员 | 6 | 诺兰认可、女性脚部鉴赏家、凯奇爆满 |
 | 时间 / 时长 | 5 | 午夜场、电影考古学家、钢铁屁股 |
+| 重看 | 4 | 重看者、电影受虐狂、永恒循环、回忆收藏家 |
 
 ### Wi-Fi 同步
 
@@ -275,11 +281,11 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 4. 在另一台设备上确认连接一次（会弹出窗口）。
 5. 完成。下次只需按 **同步** — 会静默运行。
 
-**同步内容：** 媒体库（电影、剧集、动漫）、评分、笔记、观看进度、成就、日记、收藏集。冲突按最新更改解决。
+**同步内容：** 媒体库（电影、剧集、动漫）、评分、笔记、观看进度、成就、日记、收藏集、重看记录。冲突按最新更改解决。
 
 **不同步：** 设置（主题、语言）、剧集元数据（每台设备自行获取）。
 
-> **Windows 用户注意：** 首次同步时，Windows 防火墙可能会询问网络访问 — 点击 **允许**。如果错过了，应用会显示错误并附上说明。
+> **Windows 用户注意：** 首次同步时，Windows 防火墙可能会询问网络访问 — 点击 **允许**。安装程序现在会自动添加规则。如果仍然不行，应用会显示错误并附上说明。
 
 ### 技术栈
 
@@ -287,9 +293,9 @@ Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bund
 
 ### 安装
 
-**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.1.0.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
+**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.1.1.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
 
-**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.1.0.apk**，允许从未知来源安装，然后安装。
+**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.1.1.apk**，允许从未知来源安装，然后安装。
 
 支持 Windows 10（1903 或更新版本）/ Windows 11（64 位）· Android 8.0+。
 

@@ -1,5 +1,5 @@
 use crate::db::Database;
-use crate::models::{DiaryEntry, Collection, CollectionItem, LibraryDiaryEntry};
+use crate::models::{DiaryEntry, Collection, CollectionItem, LibraryDiaryEntry, RewatchEntry};
 use crate::sync::log;
 use tauri::State;
 use std::sync::Arc;
@@ -74,6 +74,96 @@ pub fn get_library_diary(db: State<'_, Arc<Database>>, status: Option<String>) -
     };
 
     Ok(entries)
+}
+
+// ==========================================
+// REWATCH TRACKER
+// ==========================================
+
+#[tauri::command]
+pub fn get_rewatches(
+    db: State<'_, Arc<Database>>,
+    user_title_id: i64,
+) -> Result<Vec<RewatchEntry>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, watched_at, rating, notes
+         FROM watch_entries
+         WHERE user_title_id = ?1 AND is_rewatch = 1
+         ORDER BY watched_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let entries = stmt.query_map([user_title_id], |row| Ok(RewatchEntry {
+        id: row.get(0)?,
+        watched_at: row.get(1)?,
+        rating: row.get(2)?,
+        notes: row.get(3)?,
+    })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn add_rewatch(
+    db: State<'_, Arc<Database>>,
+    user_title_id: i64,
+    rating: Option<f64>,
+    notes: Option<String>,
+) -> Result<Vec<crate::models::Achievement>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    // Проверяем, что user_title существует
+    let _: i64 = conn.query_row(
+        "SELECT id FROM user_titles WHERE id = ?1",
+        [user_title_id],
+        |r| r.get(0),
+    ).map_err(|_| "Тайтл не найден в библиотеке".to_string())?;
+
+    // Вставляем запись о пересмотре
+    conn.execute(
+        "INSERT INTO watch_entries (user_title_id, watched_at, rating, notes, is_rewatch)
+         VALUES (?1, datetime('now'), ?2, ?3, 1)",
+        rusqlite::params![user_title_id, rating, notes],
+    ).map_err(|e| e.to_string())?;
+
+    let rewatch_id = conn.last_insert_rowid();
+
+    // Логируем для синка
+    let _ = log::record_watch_entry(&conn, rewatch_id);
+
+    // XP за пересмотр (5 XP — по желанию, можно 0)
+    let _ = crate::achievements::award_xp_internal(&conn, 5);
+    let _ = log::record_profile(&conn);
+
+    // Проверяем ачивки
+    crate::achievements::check_achievements_internal(&conn)
+}
+
+#[tauri::command]
+pub fn delete_rewatch(
+    db: State<'_, Arc<Database>>,
+    rewatch_id: i64,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    // Узнаём user_title_id и watched_at перед удалением (для лога)
+    let (user_title_id, watched_at, type_field, tmdb_id): (i64, String, String, Option<i64>) = conn.query_row(
+        "SELECT we.user_title_id, we.watched_at, t.type, t.tmdb_id
+         FROM watch_entries we
+         JOIN user_titles ut ON ut.id = we.user_title_id
+         JOIN titles t ON t.id = ut.title_id
+         WHERE we.id = ?1",
+        [rewatch_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    ).map_err(|_| "Пересмотр не найден".to_string())?;
+
+    conn.execute("DELETE FROM watch_entries WHERE id = ?1 AND is_rewatch = 1", [rewatch_id])
+        .map_err(|e| e.to_string())?;
+
+    // Логируем удаление (если нужно — пока пропускаем, watch_entry delete не поддерживается в crdt)
+    let _ = (user_title_id, watched_at, type_field, tmdb_id);
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -205,4 +295,31 @@ pub fn get_user_collections_for_title(db: State<'_, Arc<Database>>, user_title_i
     let mut stmt = conn.prepare("SELECT collection_id FROM collection_items WHERE user_title_id = ?1").map_err(|e| e.to_string())?;
     let ids = stmt.query_map([user_title_id], |row| row.get(0)).map_err(|e| e.to_string())?.collect::<Result<Vec<i64>, _>>().map_err(|e| e.to_string())?;
     Ok(ids)
+}
+
+#[tauri::command]
+pub fn get_all_rewatches(db: State<'_, Arc<Database>>) -> Result<Vec<crate::models::RewatchDiaryEntry>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT we.id, we.watched_at, we.rating, we.notes,
+                t.title, t.poster_path, t.type, t.tmdb_id
+         FROM watch_entries we
+         JOIN user_titles ut ON ut.id = we.user_title_id
+         JOIN titles t ON t.id = ut.title_id
+         WHERE we.is_rewatch = 1
+         ORDER BY we.watched_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let entries = stmt.query_map([], |row| Ok(crate::models::RewatchDiaryEntry {
+        id: row.get(0)?,
+        watched_at: row.get(1)?,
+        rating: row.get(2)?,
+        notes: row.get(3)?,
+        title: row.get(4)?,
+        poster_url: resolve_poster_url(row.get::<_, Option<String>>(5)?),
+        type_field: row.get(6)?,
+        tmdb_id: row.get(7)?,
+    })).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    Ok(entries)
 }

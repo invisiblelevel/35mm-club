@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { ArrowLeft, Star, Clock, Film, Check, Plus, Minus, FolderPlus } from 'lucide-svelte';
+  import { ArrowLeft, Star, Clock, Film, Check, Plus, Minus, FolderPlus, Repeat } from 'lucide-svelte';
 
   type AnimeDetails = {
     mal_id: number;
@@ -27,6 +27,13 @@
     in_collection: boolean;
   };
 
+  type RewatchEntry = {
+    id: number;
+    watched_at: string;
+    rating: number | null;
+    notes: string | null;
+  };
+
   let details: AnimeDetails | null = $state(null);
   let loading = $state(true);
   let error = $state('');
@@ -36,9 +43,18 @@
   let userTitleId = $state<number | null>(null);
   let userRating = $state<number | null>(null);
   let hoverRating = $state(0);
+  let rewatchCount = $state(0);
 
   let collections: CollectionOption[] = $state([]);
   let showCollectionPicker = $state(false);
+
+  // Rewatch Tracker
+  let rewatches: RewatchEntry[] = $state([]);
+  let showRewatchModal = $state(false);
+  let rewatchRating = $state(0);
+  let rewatchNotes = $state('');
+  let savingRewatch = $state(false);
+  let showAllRewatches = $state(false);
 
   const malId = $derived(Number(page.params.mal_id));
 
@@ -61,13 +77,17 @@
 
   async function loadUserData() {
     try {
-      const data = await invoke<{ user_title_id: number | null, status: string | null, rating: number | null }>('get_user_title_data', {
+      const data = await invoke<{ user_title_id: number | null, status: string | null, rating: number | null, rewatch_count: number }>('get_user_title_data', {
         tmdbId: malId,
         typeField: 'anime'
       });
       userTitleId = data.user_title_id;
       userRating = data.rating;
+      rewatchCount = data.rewatch_count ?? 0;
       await loadCollections();
+      if (userTitleId) {
+        await loadRewatches(userTitleId);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -89,6 +109,12 @@
     } catch (e) {
       console.error(e);
     }
+  }
+
+  async function loadRewatches(utid: number) {
+    try {
+      rewatches = await invoke<RewatchEntry[]>('get_rewatches', { userTitleId: utid });
+    } catch (e) { console.error(e); }
   }
 
   async function toggleCollection(collId: number, currentlyIn: boolean) {
@@ -150,15 +176,48 @@
   }
 
   function incrementEpisode() {
-    if (details?.episodes && watchedEpisodes < details.episodes) {
-      saveProgress(watchedEpisodes + 1);
-    }
+    saveProgress(watchedEpisodes + 1);
   }
 
   function decrementEpisode() {
     if (watchedEpisodes > 0) {
       saveProgress(watchedEpisodes - 1);
     }
+  }
+
+  function openRewatchModal() {
+    rewatchRating = userRating ?? 0;
+    rewatchNotes = '';
+    showRewatchModal = true;
+  }
+
+  async function saveRewatch() {
+    if (!userTitleId || savingRewatch) return;
+    savingRewatch = true;
+    try {
+      const unlocked = await invoke<any[]>('add_rewatch', {
+        userTitleId,
+        rating: rewatchRating > 0 ? rewatchRating : null,
+        notes: rewatchNotes.trim() || null,
+      });
+      if (unlocked && unlocked.length > 0) {
+        for (const ach of unlocked) window.dispatchEvent(new CustomEvent('achievement-toast', { detail: ach }));
+      }
+      showRewatchModal = false;
+      await loadUserData();
+      window.dispatchEvent(new CustomEvent('35mm-data-changed'));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      savingRewatch = false;
+    }
+  }
+
+  function formatDate(iso: string): string {
+    try {
+      const d = new Date(iso.replace(' ', 'T') + 'Z');
+      return d.toLocaleDateString();
+    } catch { return iso; }
   }
 
   onMount(load);
@@ -210,7 +269,6 @@
             {/if}
           </div>
 
-          <!-- РЕЙТИНГ -->
           <div class="bg-ink-light border border-border rounded-xl p-3 md:p-4 mb-3 md:mb-4 max-w-md">
             <p class="text-xs text-zinc-500 uppercase tracking-wider mb-2">{$t('title_page.your_rating')}</p>
             {#if userTitleId}
@@ -253,16 +311,24 @@
             {/if}
           </div>
 
-          <!-- КОЛЛЕКЦИИ -->
           {#if userTitleId}
             <div class="relative mb-3 md:mb-4">
-              <button
-                onclick={() => showCollectionPicker = !showCollectionPicker}
-                class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.98] transition-all text-sm w-full md:w-auto"
-              >
-                <FolderPlus size={16} />
-                {$t('title_page.add_to_collection')}
-              </button>
+              <div class="flex flex-col md:flex-row gap-2">
+                <button
+                  onclick={() => showCollectionPicker = !showCollectionPicker}
+                  class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.98] transition-all text-sm w-full md:w-auto"
+                >
+                  <FolderPlus size={16} />
+                  {$t('title_page.add_to_collection')}
+                </button>
+                <button
+                  onclick={openRewatchModal}
+                  class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.98] transition-all text-sm w-full md:w-auto"
+                >
+                  <Repeat size={16} />
+                  {$t('rewatch.button')}
+                </button>
+              </div>
               {#if showCollectionPicker}
                 <div class="absolute top-full mt-2 left-0 right-0 md:right-auto md:w-64 bg-surface border border-border rounded-xl shadow-2xl z-20 p-2 max-h-64 overflow-y-auto">
                   {#if collections.length === 0}
@@ -281,6 +347,52 @@
                 </div>
               {/if}
             </div>
+
+            {#if rewatchCount > 0}
+              <div class="mb-3 md:mb-4 p-3 md:p-4 rounded-xl bg-surface/80 border border-gold/30">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <Repeat size={16} class="text-gold" />
+                    <p class="text-sm text-gold font-medium">{$t('rewatch.count', { values: { count: rewatchCount } })}</p>
+                  </div>
+                  {#if rewatches.length > 1}
+                    <button
+                      onclick={() => showAllRewatches = !showAllRewatches}
+                      class="text-xs text-zinc-400 hover:text-gold transition-colors underline"
+                    >
+                      {showAllRewatches ? $t('rewatch.hide_list') : $t('rewatch.show_list')}
+                    </button>
+                  {/if}
+                </div>
+
+                {#if showAllRewatches}
+                  <div class="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                    {#each rewatches as rw}
+                      <div class="flex items-center gap-2 text-xs text-zinc-400">
+                        <span class="text-zinc-500">{formatDate(rw.watched_at)}</span>
+                        {#if rw.rating}
+                          <span class="flex items-center gap-0.5 text-gold">
+                            <Star size={10} fill="currentColor" />{rw.rating.toFixed(1)}
+                          </span>
+                        {/if}
+                        {#if rw.notes}
+                          <span class="text-zinc-500 truncate">· {rw.notes}</span>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                {:else if rewatches.length > 0}
+                  <div class="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                    <span>{formatDate(rewatches[0].watched_at)}</span>
+                    {#if rewatches[0].rating}
+                      <span class="flex items-center gap-0.5 text-gold">
+                        <Star size={10} fill="currentColor" />{rewatches[0].rating.toFixed(1)}
+                      </span>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/if}
           {/if}
 
           {#if details.studio}
@@ -307,43 +419,93 @@
       </div>
     </div>
 
-    <!-- ПРОГРЕСС -->
-    {#if details.episodes}
-      <div class="bg-surface border border-border rounded-xl p-4 md:p-6 mb-6 md:mb-8">
-        <h2 class="font-display text-lg md:text-xl font-bold mb-3 md:mb-4">{$t('title_page.progress')}</h2>
-        <div class="flex flex-col sm:flex-row items-center gap-3 md:gap-4">
-          <div class="flex items-center gap-3 md:gap-4">
-            <button
-              onclick={decrementEpisode}
-              disabled={watchedEpisodes === 0 || saving}
-              class="w-11 h-11 md:w-10 md:h-10 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.95] transition-all disabled:opacity-30"
-            >
-              <Minus size={18} class="mx-auto" />
-            </button>
-            <div class="text-center">
-              <div class="text-2xl md:text-3xl font-bold">
-                <span class="text-gold">{watchedEpisodes}</span>
+    <div class="bg-surface border border-border rounded-xl p-4 md:p-6 mb-6 md:mb-8">
+      <h2 class="font-display text-lg md:text-xl font-bold mb-3 md:mb-4">{$t('title_page.progress')}</h2>
+      <div class="flex flex-col sm:flex-row items-center gap-3 md:gap-4">
+        <div class="flex items-center gap-3 md:gap-4">
+          <button
+            onclick={decrementEpisode}
+            disabled={watchedEpisodes === 0 || saving}
+            class="w-11 h-11 md:w-10 md:h-10 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.95] transition-all disabled:opacity-30"
+          >
+            <Minus size={18} class="mx-auto" />
+          </button>
+          <div class="text-center">
+            <div class="flex items-center justify-center gap-1 text-2xl md:text-3xl font-bold">
+              <input
+                type="number"
+                bind:value={watchedEpisodes}
+                onchange={(e) => saveProgress(Number(e.currentTarget.value))}
+                onkeydown={(e) => e.key === 'Enter' && saveProgress(Number(e.currentTarget.value))}
+                class="w-20 md:w-24 bg-ink border border-border rounded-lg text-center text-gold focus:border-gold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                min="0"
+              />
+              {#if details.episodes}
                 <span class="text-zinc-500"> / {details.episodes}</span>
-              </div>
-              <div class="text-xs text-zinc-500 mt-1">{$t('title_page.watched')}</div>
+              {/if}
             </div>
-            <button
-              onclick={incrementEpisode}
-              disabled={watchedEpisodes >= details.episodes || saving}
-              class="w-11 h-11 md:w-10 md:h-10 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.95] transition-all disabled:opacity-30"
-            >
-              <Plus size={18} class="mx-auto" />
-            </button>
+            <div class="text-xs text-zinc-500 mt-1">{$t('title_page.watched')}</div>
           </div>
-
-          {#if watchedEpisodes === details.episodes}
-            <div class="flex items-center gap-2 text-emerald-400 sm:ml-4">
-              <Check size={20} />
-              <span class="text-sm font-medium">{$t('title_page.fully_watched')}</span>
-            </div>
-          {/if}
+          <button
+            onclick={incrementEpisode}
+            disabled={saving}
+            class="w-11 h-11 md:w-10 md:h-10 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.95] transition-all disabled:opacity-30"
+          >
+            <Plus size={18} class="mx-auto" />
+          </button>
         </div>
+
+        {#if details.episodes && watchedEpisodes >= details.episodes}
+          <div class="flex items-center gap-2 text-emerald-400 sm:ml-4">
+            <Check size={20} />
+            <span class="text-sm font-medium">{$t('title_page.fully_watched')}</span>
+          </div>
+        {/if}
       </div>
-    {/if}
+    </div>
   {/if}
 </div>
+
+{#if showRewatchModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onclick={(e) => e.target === e.currentTarget && (showRewatchModal = false)} role="presentation">
+    <div class="w-full max-w-md bg-surface border border-border rounded-2xl p-4 md:p-6" onclick={(e) => e.stopPropagation()}>
+      <h2 class="font-display text-lg md:text-xl font-bold mb-2">{$t('rewatch.modal_title')}</h2>
+      <p class="text-sm text-zinc-400 mb-4">{$t('rewatch.modal_description')}</p>
+
+      <div class="mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">{$t('rewatch.rating')}</label>
+        <div class="flex items-center gap-1">
+          {#each Array(10) as _, i}
+            {@const val = i + 1}
+            <button
+              type="button"
+              onclick={() => rewatchRating = rewatchRating === val ? 0 : val}
+              class="text-2xl transition-transform active:scale-90"
+            >
+              <Star size={22} fill={rewatchRating >= val ? 'currentColor' : 'none'} class={rewatchRating >= val ? 'text-gold' : 'text-zinc-600'} />
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">{$t('rewatch.notes')}</label>
+        <textarea
+          bind:value={rewatchNotes}
+          rows="3"
+          placeholder={$t('rewatch.notes_placeholder')}
+          class="w-full px-3 py-2 bg-ink-light border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none resize-none text-sm"
+        ></textarea>
+      </div>
+
+      <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
+        <button onclick={() => showRewatchModal = false} class="px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">{$t('rewatch.cancel')}</button>
+        <button
+          onclick={saveRewatch}
+          disabled={savingRewatch}
+          class="px-4 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg text-sm transition-all disabled:opacity-50"
+        >{savingRewatch ? $t('common.loading') : $t('rewatch.save')}</button>
+      </div>
+    </div>
+  </div>
+{/if}

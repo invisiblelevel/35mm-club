@@ -81,15 +81,40 @@ pub fn get_user_title_data(db: State<'_, Arc<Database>>, tmdb_id: i64, type_fiel
     let result = conn.query_row(
         "SELECT ut.id, ut.status, ut.rating, ut.notes, ut.added_at FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1 AND t.type = ?2 LIMIT 1",
         rusqlite::params![tmdb_id, type_field],
-        |row| Ok(UserTitleData {
-            user_title_id: Some(row.get(0)?),
-            status: Some(row.get(1)?),
-            rating: row.get(2)?,
-            notes: row.get(3)?,
-            added_at: row.get(4)?,
-        })
+        |row| Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, Option<f64>>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, String>(4)?,
+        ))
     ).ok();
-    Ok(result.unwrap_or(UserTitleData { user_title_id: None, status: None, rating: None, notes: None, added_at: None }))
+
+    match result {
+        Some((user_title_id, status, rating, notes, added_at)) => {
+            let rewatch_count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM watch_entries WHERE user_title_id = ?1 AND is_rewatch = 1",
+                [user_title_id],
+                |r| r.get(0),
+            ).unwrap_or(0);
+            Ok(UserTitleData {
+                user_title_id: Some(user_title_id),
+                status: Some(status),
+                rating,
+                notes,
+                added_at: Some(added_at),
+                rewatch_count,
+            })
+        }
+        None => Ok(UserTitleData {
+            user_title_id: None,
+            status: None,
+            rating: None,
+            notes: None,
+            added_at: None,
+            rewatch_count: 0,
+        }),
+    }
 }
 
 #[tauri::command]

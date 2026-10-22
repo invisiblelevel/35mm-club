@@ -103,7 +103,25 @@
     "tab_all": "全部",
     "notes_placeholder": "简短备注...",
     "notes_empty": "无备注",
-    "edit_notes": "编辑备注"
+    "edit_notes": "编辑备注",
+	"rewatch_badge": "重看"
+  },
+    "rewatch": {
+    "button": "重看",
+    "modal_title": "记录重看",
+    "modal_description": "你已经看过这部作品多少次了？",
+    "rating": "评分",
+    "notes": "笔记",
+    "notes_placeholder": "这次重看有什么新发现？",
+    "save": "保存",
+    "cancel": "取消",
+    "count": "已重看 {count} 次",
+    "saved": "重看已记录",
+    "show_list": "显示全部",
+    "hide_list": "收起",
+	"diary_tab": "重看",
+    "empty": "暂无重看记录",
+    "empty_hint": "打开作品并点击「重看」来记录。"
   },
   "achievements": {
     "title": "成就",

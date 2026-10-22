@@ -86,6 +86,7 @@ pub struct UserTitleData {
     pub rating: Option<f64>,
     pub notes: Option<String>,
     pub added_at: Option<String>,
+    pub rewatch_count: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -145,4 +146,24 @@ pub struct LibraryDiaryEntry {
     pub rating: Option<f64>,
     pub notes: Option<String>,
     pub added_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RewatchEntry {
+    pub id: i64,
+    pub watched_at: String,
+    pub rating: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RewatchDiaryEntry {
+    pub id: i64,
+    pub watched_at: String,
+    pub rating: Option<f64>,
+    pub notes: Option<String>,
+    pub title: String,
+    pub poster_url: Option<String>,
+    pub type_field: String,
+    pub tmdb_id: Option<i64>,
 }

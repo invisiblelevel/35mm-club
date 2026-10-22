@@ -31,6 +31,11 @@ rand = "0.8"
 sha2 = "0.10"
 hex = "0.4"
 
+# --- Android MulticastLock ---
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-context = "0.1"
+jni = "0.21"
+
 [profile.release]
 codegen-units = 1
 lto = true

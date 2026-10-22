@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import { ArrowLeft, Star, Clock, ExternalLink, Film, ChevronDown, ChevronRight, Check, FolderPlus, Pencil, X } from 'lucide-svelte';
+  import { ArrowLeft, Star, Clock, ExternalLink, Film, ChevronDown, ChevronRight, Check, FolderPlus, Pencil, X, Repeat } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import { goto } from '$app/navigation';
 
@@ -16,7 +16,7 @@
   };
 
   type UserTitleData = {
-    user_title_id: number | null; status: string | null; rating: number | null; notes: string | null; added_at: string | null;
+    user_title_id: number | null; status: string | null; rating: number | null; notes: string | null; added_at: string | null; rewatch_count: number;
   };
 
   type Achievement = { id: number; code: string; title_key: string | null; description_key: string | null; xp_reward: number; };
@@ -38,6 +38,10 @@
     id: number; name: string; description: string | null; created_at: string; item_count: number; preview_posters: string[];
   };
 
+  type RewatchEntry = {
+    id: number; watched_at: string; rating: number | null; notes: string | null;
+  };
+
   let details: TitleDetails | null = $state(null);
   let userData: UserTitleData | null = $state(null);
   let loading = $state(true);
@@ -57,12 +61,20 @@
   let editingNotes = $state(false);
   let notesInput = $state('');
 
+  let rewatches: RewatchEntry[] = $state([]);
+  let showRewatchModal = $state(false);
+  let rewatchRating = $state(0);
+  let rewatchNotes = $state('');
+  let savingRewatch = $state(false);
+  let showAllRewatches = $state(false);
+
   const tmdbId = $derived(Number(page.params.tmdb_id));
   const mediaType = $derived((page.url.searchParams.get('type') ?? 'movie') as string);
   const isTv = $derived(mediaType === 'tv');
 
   const currentRating = $derived(userData?.rating ?? 0);
   const displayRating = $derived(hoveredStar > 0 ? hoveredStar : currentRating);
+  const rewatchCount = $derived(userData?.rewatch_count ?? 0);
 
   async function load() {
     try {
@@ -76,7 +88,7 @@
         invoke<UserTitleData>('get_user_title_data', {
           tmdbId,
           typeField: mediaType,
-        }).catch(() => ({ user_title_id: null, status: null, rating: null, notes: null, added_at: null } as UserTitleData)),
+        }).catch(() => ({ user_title_id: null, status: null, rating: null, notes: null, added_at: null, rewatch_count: 0 } as UserTitleData)),
       ]);
       details = d;
       userData = u;
@@ -87,6 +99,7 @@
 
       if (u.user_title_id) {
         await loadCollectionsForTitle(u.user_title_id);
+        await loadRewatches(u.user_title_id);
       }
     } catch (e) {
       error = String(e);
@@ -109,6 +122,12 @@
       ]);
       allCollections = all;
       titleCollections = mine;
+    } catch (e) { console.error(e); }
+  }
+
+  async function loadRewatches(utid: number) {
+    try {
+      rewatches = await invoke<RewatchEntry[]>('get_rewatches', { userTitleId: utid });
     } catch (e) { console.error(e); }
   }
 
@@ -206,6 +225,42 @@
     } catch (e) {
       console.error(e);
     }
+  }
+
+  function openRewatchModal() {
+    rewatchRating = userData?.rating ?? 0;
+    rewatchNotes = '';
+    showRewatchModal = true;
+  }
+
+  async function saveRewatch() {
+    if (!userData?.user_title_id || savingRewatch) return;
+    savingRewatch = true;
+    try {
+      const unlocked = await invoke<Achievement[]>('add_rewatch', {
+        userTitleId: userData.user_title_id,
+        rating: rewatchRating > 0 ? rewatchRating : null,
+        notes: rewatchNotes.trim() || null,
+      });
+      if (unlocked && unlocked.length > 0) {
+        for (const ach of unlocked) window.dispatchEvent(new CustomEvent('achievement-toast', { detail: ach }));
+      }
+      showRewatchModal = false;
+      userData = await invoke<UserTitleData>('get_user_title_data', { tmdbId, typeField: mediaType });
+      await loadRewatches(userData.user_title_id!);
+      window.dispatchEvent(new CustomEvent('35mm-data-changed'));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      savingRewatch = false;
+    }
+  }
+
+  function formatDate(iso: string): string {
+    try {
+      const d = new Date(iso.replace(' ', 'T') + 'Z');
+      return d.toLocaleDateString();
+    } catch { return iso; }
   }
 </script>
 
@@ -317,7 +372,7 @@
           {/if}
 
           {#if userData?.user_title_id}
-            <div class="mb-4 md:mb-6">
+            <div class="flex flex-col md:flex-row gap-2 mb-4 md:mb-6">
               <button
                 type="button"
                 onclick={() => showCollections = true}
@@ -326,7 +381,61 @@
                 <FolderPlus size={16} />
                 {$t('title_page.add_to_collection')}
               </button>
+              <button
+                type="button"
+                onclick={openRewatchModal}
+                class="flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2.5 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold hover:text-gold active:scale-[0.98] transition-all"
+              >
+                <Repeat size={16} />
+                {$t('rewatch.button')}
+              </button>
             </div>
+
+            {#if rewatchCount > 0}
+              <div class="mb-4 md:mb-6 p-3 md:p-4 rounded-xl bg-surface/80 border border-gold/30">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <Repeat size={16} class="text-gold" />
+                    <p class="text-sm text-gold font-medium">{$t('rewatch.count', { values: { count: rewatchCount } })}</p>
+                  </div>
+                  {#if rewatches.length > 1}
+                    <button
+                      onclick={() => showAllRewatches = !showAllRewatches}
+                      class="text-xs text-zinc-400 hover:text-gold transition-colors underline"
+                    >
+                      {showAllRewatches ? $t('rewatch.hide_list') : $t('rewatch.show_list')}
+                    </button>
+                  {/if}
+                </div>
+
+                {#if showAllRewatches}
+                  <div class="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                    {#each rewatches as rw}
+                      <div class="flex items-center gap-2 text-xs text-zinc-400">
+                        <span class="text-zinc-500">{formatDate(rw.watched_at)}</span>
+                        {#if rw.rating}
+                          <span class="flex items-center gap-0.5 text-gold">
+                            <Star size={10} fill="currentColor" />{rw.rating.toFixed(1)}
+                          </span>
+                        {/if}
+                        {#if rw.notes}
+                          <span class="text-zinc-500 truncate">· {rw.notes}</span>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                {:else if rewatches.length > 0}
+                  <div class="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                    <span>{formatDate(rewatches[0].watched_at)}</span>
+                    {#if rewatches[0].rating}
+                      <span class="flex items-center gap-0.5 text-gold">
+                        <Star size={10} fill="currentColor" />{rewatches[0].rating.toFixed(1)}
+                      </span>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/if}
           {/if}
 
           {#if details.genres.length > 0}
@@ -472,6 +581,50 @@
       <button onclick={() => showCollections = false} class="w-full px-4 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg mt-2 transition-all">
         {$t('common.close')}
       </button>
+    </div>
+  </div>
+{/if}
+
+{#if showRewatchModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onclick={(e) => e.target === e.currentTarget && (showRewatchModal = false)} role="presentation">
+    <div class="w-full max-w-md bg-surface border border-border rounded-2xl p-4 md:p-6" onclick={(e) => e.stopPropagation()}>
+      <h2 class="font-display text-lg md:text-xl font-bold mb-2">{$t('rewatch.modal_title')}</h2>
+      <p class="text-sm text-zinc-400 mb-4">{$t('rewatch.modal_description')}</p>
+
+      <div class="mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">{$t('rewatch.rating')}</label>
+        <div class="flex items-center gap-1">
+          {#each Array(10) as _, i}
+            {@const val = i + 1}
+            <button
+              type="button"
+              onclick={() => rewatchRating = rewatchRating === val ? 0 : val}
+              class="text-2xl transition-transform active:scale-90"
+            >
+              <Star size={22} fill={rewatchRating >= val ? 'currentColor' : 'none'} class={rewatchRating >= val ? 'text-gold' : 'text-zinc-600'} />
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs uppercase tracking-wider text-zinc-500 mb-2">{$t('rewatch.notes')}</label>
+        <textarea
+          bind:value={rewatchNotes}
+          rows="3"
+          placeholder={$t('rewatch.notes_placeholder')}
+          class="w-full px-3 py-2 bg-ink-light border border-border rounded-lg text-zinc-100 placeholder-zinc-500 focus:border-gold focus:outline-none resize-none text-sm"
+        ></textarea>
+      </div>
+
+      <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
+        <button onclick={() => showRewatchModal = false} class="px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-100 transition-colors">{$t('rewatch.cancel')}</button>
+        <button
+          onclick={saveRewatch}
+          disabled={savingRewatch}
+          class="px-4 py-2.5 bg-gradient-to-b from-gold to-gold-dark hover:brightness-110 active:scale-[0.98] text-ink font-medium rounded-lg text-sm transition-all disabled:opacity-50"
+        >{savingRewatch ? $t('common.loading') : $t('rewatch.save')}</button>
+      </div>
     </div>
   </div>
 {/if}

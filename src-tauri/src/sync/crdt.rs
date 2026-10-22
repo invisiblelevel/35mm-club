@@ -26,37 +26,60 @@ pub fn apply_remote_change(conn: &Connection, record: &SyncRecord) -> Result<boo
 
 fn apply_profile(conn: &Connection, record: &SyncRecord) -> Result<bool, String> {
     if record.action == "delete" {
-        return Ok(false); // профиль не удаляем
+        return Ok(false);
     }
 
     let payload: serde_json::Value = serde_json::from_str(
         record.payload.as_deref().ok_or("profile: пустой payload")?,
-    )
-    .map_err(|e| e.to_string())?;
+    ).map_err(|e| e.to_string())?;
 
-    let local_updated: String = conn
-        .query_row("SELECT updated_at FROM user_profile WHERE id = 1", [], |r| r.get(0))
-        .unwrap_or_else(|_| "1970-01-01 00:00:00".to_string());
+    let remote_xp = payload.get("xp").and_then(|v| v.as_i64()).unwrap_or(0);
+    let remote_minutes = payload.get("total_watch_minutes").and_then(|v| v.as_i64()).unwrap_or(0);
+    let remote_username = payload.get("username").and_then(|v| v.as_str());
+    let remote_avatar = payload.get("avatar_path").and_then(|v| v.as_str());
 
-    if record.updated_at <= local_updated {
-        return Ok(false); // локальная версия новее или равна
+    let (local_xp, local_minutes, local_username, local_avatar, local_updated): (
+        i64, i64, String, Option<String>, String,
+    ) = conn
+        .query_row(
+            "SELECT xp, total_watch_minutes, username, avatar_path, updated_at FROM user_profile WHERE id = 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    // XP и минуты — накопительные, берём MAX, а не LWW.
+    let new_xp = local_xp.max(remote_xp);
+    let new_minutes = local_minutes.max(remote_minutes);
+    let new_level = crate::achievements::calculate_level(new_xp);
+
+    // username/avatar — LWW по updated_at.
+    let use_remote_meta = record.updated_at > local_updated;
+    let final_username = if use_remote_meta {
+        remote_username.unwrap_or(&local_username)
+    } else {
+        &local_username
+    };
+    let final_avatar = if use_remote_meta {
+        remote_avatar.or(local_avatar.as_deref())
+    } else {
+        local_avatar.as_deref()
+    };
+
+    // Если ничего не изменилось — выходим.
+    if new_xp == local_xp && new_minutes == local_minutes && !use_remote_meta {
+        return Ok(false);
     }
-
-    let username = payload.get("username").and_then(|v| v.as_str()).unwrap_or("Киноман");
-    let avatar_path = payload.get("avatar_path").and_then(|v| v.as_str());
-    let xp = payload.get("xp").and_then(|v| v.as_i64()).unwrap_or(0);
-    let total_watch_minutes = payload
-        .get("total_watch_minutes")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0);
 
     conn.execute(
         "UPDATE user_profile
-         SET username = ?1, avatar_path = ?2, xp = ?3, total_watch_minutes = ?4, updated_at = ?5
+         SET username = ?1, avatar_path = ?2, xp = ?3, total_watch_minutes = ?4, level = ?5, updated_at = ?6
          WHERE id = 1",
-        rusqlite::params![username, avatar_path, xp, total_watch_minutes, record.updated_at],
-    )
-    .map_err(|e| e.to_string())?;
+        rusqlite::params![
+            final_username, final_avatar, new_xp, new_minutes, new_level,
+            if use_remote_meta { record.updated_at.clone() } else { local_updated }
+        ],
+    ).map_err(|e| e.to_string())?;
 
     Ok(true)
 }

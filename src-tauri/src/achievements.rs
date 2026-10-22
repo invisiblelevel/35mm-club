@@ -33,7 +33,7 @@ pub fn rank_name_for_level(level: i32) -> &'static str {
 
 pub fn award_xp_internal(conn: &Connection, amount: i64) -> Result<i64, String> {
     if amount == 0 { return Ok(0); }
-    conn.execute("UPDATE user_profile SET xp = xp + ?1 WHERE id = 1", [amount]).map_err(|e| e.to_string())?;
+    conn.execute("UPDATE user_profile SET xp = xp + ?1, updated_at = datetime('now') WHERE id = 1", [amount]).map_err(|e| e.to_string())?;
     let new_xp: i64 = conn.query_row("SELECT xp FROM user_profile WHERE id = 1", [], |row| row.get(0)).map_err(|e| e.to_string())?;
     let new_level = calculate_level(new_xp);
     conn.execute("UPDATE user_profile SET level = ?1 WHERE id = 1", [new_level]).map_err(|e| e.to_string())?;
@@ -42,7 +42,7 @@ pub fn award_xp_internal(conn: &Connection, amount: i64) -> Result<i64, String> 
 
 pub fn add_watch_minutes(conn: &Connection, minutes: i64) -> Result<(), String> {
     if minutes <= 0 { return Ok(()); }
-    conn.execute("UPDATE user_profile SET total_watch_minutes = total_watch_minutes + ?1 WHERE id = 1", [minutes]).map_err(|e| e.to_string())?;
+    conn.execute("UPDATE user_profile SET total_watch_minutes = total_watch_minutes + ?1, updated_at = datetime('now') WHERE id = 1", [minutes]).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -102,7 +102,7 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
 
     for (id, code, category, icon, xp_reward, scope, tier, is_secret, title_key, description_key, cond_type, cond_value_opt, required) in pending {
         let cond_value = cond_value_opt.unwrap_or(0);
-        let is_counter = matches!(cond_type.as_str(), "total_count" | "movies_count" | "tv_count" | "anime_count" | "status_planned" | "status_on_hold" | "status_dropped");
+        let is_counter = matches!(cond_type.as_str(), "total_count" | "movies_count" | "tv_count" | "anime_count" | "status_planned" | "status_on_hold" | "status_dropped" | "tv_seasons_completed" | "anime_episodes_watched" | "rewatch_count" | "rewatch_same_title");
         let no_id_type = matches!(cond_type.as_str(), "ratings_1" | "night_watch" | "user_rating_with_low_tmdb" | "daily_completed" | "tv_episodes_completed" | "anime_episodes_completed" | "anime_franchise_completed");
         if cond_value == 0 && !is_counter && !no_id_type { continue; }
 
@@ -146,10 +146,43 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
                 let watched: i64 = conn.query_row("SELECT COUNT(*) FROM user_episodes ue JOIN episodes e ON e.id = ue.episode_id JOIN seasons s ON s.id = e.season_id JOIN titles t ON t.id = s.title_id WHERE t.tmdb_id = ?1 AND t.type = 'tv'", [cond_value], |r| r.get(0)).unwrap_or(0);
                 total > 0 && watched == total
             }
+            "tv_seasons_completed" => {
+                // Считаем сезоны, в которых ВСЕ эпизоды отмечены.
+                // Работает для долгоиграющих сериалов (Симпсоны, South Park, Criminal Minds),
+                // которые ещё выходят: ачивка выдаётся за N полностью просмотренных сезонов,
+                // а не за весь сериал целиком.
+                let completed_seasons: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM (
+                        SELECT s.id
+                        FROM seasons s
+                        JOIN titles t ON t.id = s.title_id
+                        WHERE t.tmdb_id = ?1 AND t.type = 'tv'
+                        GROUP BY s.id
+                        HAVING (SELECT COUNT(*) FROM episodes e WHERE e.season_id = s.id) > 0
+                           AND (SELECT COUNT(*) FROM episodes e WHERE e.season_id = s.id) =
+                               (SELECT COUNT(*) FROM user_episodes ue JOIN episodes e ON e.id = ue.episode_id WHERE e.season_id = s.id)
+                    )",
+                    [cond_value],
+                    |r| r.get(0),
+                ).unwrap_or(0);
+                completed_seasons >= required
+            },
             "anime_episodes_completed" => {
                 let row: Option<(i64, Option<i64>)> = conn.query_row("SELECT ut.anime_episodes_watched, t.episodes_total FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.tmdb_id = ?1 AND t.type = 'anime' LIMIT 1", [cond_value], |r| Ok((r.get(0)?, r.get(1)?))).ok();
                 if let Some((watched, total_opt)) = row { if let Some(total) = total_opt { total > 0 && watched >= total } else { false } } else { false }
             }
+            "anime_episodes_watched" => {
+                // Для долгоиграющих аниме (One Piece, Detective Conan, Naruto):
+                // ачивка за N просмотренных серий, а не за весь тайтл целиком.
+                let watched: i64 = conn.query_row(
+                    "SELECT ut.anime_episodes_watched FROM user_titles ut
+                     JOIN titles t ON t.id = ut.title_id
+                     WHERE t.tmdb_id = ?1 AND t.type = 'anime' LIMIT 1",
+                    [cond_value],
+                    |r| r.get(0),
+                ).unwrap_or(0);
+                watched >= required
+            },
             "anime_franchise_completed" => {
                 let mal_ids: Vec<i64> = match code.as_str() {
                     "anime_konosuba_party" => vec![30831, 32937, 49458],
@@ -158,6 +191,27 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
                     "anime_naruto_legend" => vec![20, 1735],
                     "anime_made_in_abyss" => vec![34599, 41084],
                     "anime_mushoku_tensei" => vec![39535, 45576],
+					"anime_ghibli_miyazaki" => vec![199, 431, 164, 523],
+					"anime_rezero" => vec![31240, 39587, 42203, 54857, 61316],
+                    "anime_slime" => vec![37430, 39551, 41487, 53580, 59970],
+                    "anime_shield_hero" => vec![35790, 40356, 40357, 57907],
+                    "anime_realist_hero" => vec![41710, 49930],
+                    "anime_emminence_shadow" => vec![48316, 54595],
+                    "anime_slime_300" => vec![40586, 50738],
+                    "anime_campfire_cooking" => vec![53446, 57025],
+                    "anime_k_on" => vec![5680, 7791],
+                    "anime_clannad" => vec![2167, 4181],
+                    "anime_umaru" => vec![28825, 35376],
+                    "anime_rent_a_girlfriend" => vec![40839, 42963, 53050, 59277, 62485],
+                    "anime_kaguya" => vec![37999, 40591, 43608],
+                    "anime_tokyo_ghoul" => vec![22319, 27899, 36511, 37799],
+                    "anime_psycho_pass" => vec![13601, 23281, 39491],
+                    "anime_terra_formars" => vec![22687, 31430],
+					"anime_highschool_dxd" => vec![11617, 15451, 24703, 34281],
+                    "anime_to_love_ru" => vec![3455, 9181, 13663, 28979],
+                    "anime_demon_lord" => vec![37210, 41623],
+                    "anime_uzaki" => vec![41226, 42962],
+                    "anime_testament" => vec![23233, 30363],
                     _ => vec![],
                 };
                 if mal_ids.is_empty() { false }
@@ -169,6 +223,27 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
                     }
                     all_completed
                 }
+            },
+            "rewatch_count" => {
+                let c: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM watch_entries WHERE is_rewatch = 1",
+                    [],
+                    |r| r.get(0),
+                ).unwrap_or(0);
+                c >= required
+            }
+            "rewatch_same_title" => {
+                let c: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM (
+                        SELECT user_title_id FROM watch_entries
+                        WHERE is_rewatch = 1
+                        GROUP BY user_title_id
+                        HAVING COUNT(*) >= ?1
+                    )",
+                    [required],
+                    |r| r.get(0),
+                ).unwrap_or(0);
+                c > 0
             }
             _ => false,
         };
