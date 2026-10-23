@@ -280,6 +280,10 @@ pub async fn refresh_titles_language(
     api_key: Option<String>,
     locale: String,
 ) -> Result<usize, String> {
+    if locale == "zh-CN" {
+        return Ok(0);
+    }
+
     let titles: Vec<(i64, i64, String)> = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn.prepare("SELECT id, tmdb_id, type FROM titles WHERE tmdb_id IS NOT NULL AND type != 'anime'").map_err(|e| e.to_string())?;
@@ -329,11 +333,15 @@ pub async fn ensure_title_language(
 }
 
 // ==========================================
-// SHIKIMORI / ANILIST (АНИМЕ)
+// SHIKIMORI / ANILIST / BANGUMI (АНИМЕ)
 // ==========================================
 
 #[tauri::command]
 pub async fn search_anime(query: String, locale: String) -> Result<Vec<crate::shikimori::ShikiSearchItem>, String> {
+    if locale == "zh-CN" {
+        return search_anime_bangumi(query).await;
+    }
+
     match crate::shikimori::search_anime(&query, 20, &locale).await {
         Ok(mut results) if !results.is_empty() => {
             if locale != "ru" {
@@ -364,11 +372,102 @@ pub async fn search_anime(query: String, locale: String) -> Result<Vec<crate::sh
     }).collect())
 }
 
+async fn search_anime_bangumi(query: String) -> Result<Vec<crate::shikimori::ShikiSearchItem>, String> {
+    let items = crate::bangumi::search_anime(&query, 20).await?;
+
+    if items.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut set = tokio::task::JoinSet::new();
+    for (idx, item) in items.iter().enumerate() {
+        let title = item.title_original.clone().unwrap_or_else(|| item.title.clone());
+        let bangumi_id = item.bangumi_id;
+        set.spawn(async move {
+            let mal_id = crate::bangumi::find_mal_id(bangumi_id, &title).await;
+            (idx, mal_id)
+        });
+    }
+
+    let mut mal_ids: Vec<Option<i64>> = vec![None; items.len()];
+    while let Some(joined) = set.join_next().await {
+        if let Ok((idx, mal_id)) = joined {
+            mal_ids[idx] = mal_id;
+        }
+    }
+
+    let mut mapped = Vec::new();
+    for (item, mal_id_opt) in items.into_iter().zip(mal_ids.into_iter()) {
+        if let Some(mal_id) = mal_id_opt {
+            mapped.push(crate::shikimori::ShikiSearchItem {
+                mal_id,
+                title: item.title,
+                title_original: item.title_original,
+                description: item.description,
+                cover_url: item.cover_url,
+                episodes: item.episodes,
+                average_score: item.average_score.map(|s| s / 10.0),
+                format: item.format,
+                year: item.year,
+            });
+        }
+    }
+
+    Ok(mapped)
+}
+
 #[tauri::command]
 pub async fn get_anime_details(
+    db: State<'_, Arc<Database>>,
     mal_id: i64,
     locale: String,
 ) -> Result<crate::shikimori::ShikiAnimeDetails, String> {
+    let from_db: Option<crate::shikimori::ShikiAnimeDetails> = {
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        conn.query_row(
+            "SELECT title, original_title, overview, poster_path, episodes_total,
+                    anime_format, anime_status, studio, year
+             FROM titles WHERE tmdb_id = ?1 AND type = 'anime' LIMIT 1",
+            [mal_id],
+            |r| {
+                let title: String = r.get(0)?;
+                let original_title: Option<String> = r.get(1)?;
+                let overview: Option<String> = r.get(2)?;
+                let poster_path: Option<String> = r.get(3)?;
+                let episodes: Option<i64> = r.get(4)?;
+                let format: Option<String> = r.get(5)?;
+                let status: Option<String> = r.get(6)?;
+                let studio: Option<String> = r.get(7)?;
+                let year: Option<i64> = r.get(8)?;
+
+                let cover_url = poster_path.map(|p| {
+                    if p.starts_with("http") { p }
+                    else { format!("https://image.tmdb.org/t/p/w500{}", p) }
+                });
+
+                Ok(crate::shikimori::ShikiAnimeDetails {
+                    mal_id,
+                    title,
+                    title_original: original_title,
+                    description: overview,
+                    cover_url,
+                    episodes,
+                    duration: None,
+                    average_score: None,
+                    format,
+                    status,
+                    genres: vec![],
+                    studio,
+                    year,
+                })
+            },
+        ).ok()
+    };
+
+    if let Some(details) = from_db {
+        return Ok(details);
+    }
+
     let mut details = crate::shikimori::get_anime_details(mal_id, &locale).await?;
 
     if locale != "ru" {
@@ -582,7 +681,8 @@ pub fn export_data(db: State<'_, Arc<Database>>) -> Result<String, String> {
 
     let profile: Value = conn.query_row(
         "SELECT username, level, xp, total_watch_minutes, created_at FROM user_profile WHERE id = 1",
-        [], |r| Ok(json!({
+        [],
+        |r| Ok(json!({
             "username": r.get::<_, String>(0)?,
             "level": r.get::<_, i64>(1)?,
             "xp": r.get::<_, i64>(2)?,
@@ -835,4 +935,170 @@ pub fn update_title_notes(db: State<'_, Arc<Database>>, user_title_id: i64, note
     ).map_err(|e| e.to_string())?;
     let _ = log::record_user_title(&conn, user_title_id);
     Ok(())
+}
+
+// ==========================================
+// СТАТИСТИКА
+// ==========================================
+
+#[tauri::command]
+pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFull, String> {
+    use crate::models::*;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    // ---------- OVERVIEW ----------
+    let total_titles: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles", [], |r| r.get(0)).unwrap_or(0);
+    let total_movies: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'movie'", [], |r| r.get(0)).unwrap_or(0);
+    let total_tv: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'tv'", [], |r| r.get(0)).unwrap_or(0);
+    let total_anime: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'anime'", [], |r| r.get(0)).unwrap_or(0);
+    let total_completed: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'completed'", [], |r| r.get(0)).unwrap_or(0);
+    let total_watching: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'watching'", [], |r| r.get(0)).unwrap_or(0);
+    let total_planned: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'planned'", [], |r| r.get(0)).unwrap_or(0);
+    let total_on_hold: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'on_hold'", [], |r| r.get(0)).unwrap_or(0);
+    let total_dropped: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'dropped'", [], |r| r.get(0)).unwrap_or(0);
+    let total_minutes: i64 = conn.query_row("SELECT total_watch_minutes FROM user_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or(0);
+
+    // Эпизоды: отмеченные сериалы + anime_episodes_watched
+    let tv_episodes: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM user_episodes ue
+         JOIN episodes e ON e.id = ue.episode_id
+         JOIN seasons s ON s.id = e.season_id
+         JOIN titles t ON t.id = s.title_id
+         WHERE t.type = 'tv'", [], |r| r.get(0)
+    ).unwrap_or(0);
+    let anime_episodes: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(anime_episodes_watched), 0) FROM user_titles ut
+         JOIN titles t ON t.id = ut.title_id
+         WHERE t.type = 'anime'", [], |r| r.get(0)
+    ).unwrap_or(0);
+    let total_episodes = tv_episodes + anime_episodes;
+
+    let total_rewatches: i64 = conn.query_row("SELECT COUNT(*) FROM watch_entries WHERE is_rewatch = 1", [], |r| r.get(0)).unwrap_or(0);
+
+    let (average_rating, rated_count): (Option<f64>, i64) = conn.query_row(
+        "SELECT AVG(rating), COUNT(*) FROM user_titles WHERE rating IS NOT NULL",
+        [], |r| Ok((r.get(0)?, r.get(1)?))
+    ).unwrap_or((None, 0));
+
+    let overview = StatsOverview {
+        total_titles, total_movies, total_tv, total_anime,
+        total_completed, total_watching, total_planned, total_on_hold, total_dropped,
+        total_minutes, total_episodes, total_rewatches, average_rating, rated_count,
+    };
+
+    // ---------- GENRES ----------
+    // Жанры не хранятся в БД отдельной таблицей. Используем keyword_ids/company? Нет.
+    // У нас в titles нет genre_ids. Есть только overview. Поэтому жанры достанем из titles.overview? Нет.
+    // Проще: пропускаем жанры на первом этапе ИЛИ считаем по keyword? Нет.
+    // Вариант: считать по type + year, а жанры убрать. Либо добавить в title_metadata поле genre_ids.
+    // Пока genres = пустой массив (можно расширить позже).
+    let genres: Vec<StatsGenre> = vec![];
+
+    // ---------- YEARS ----------
+    let mut stmt = conn.prepare(
+        "SELECT t.year, COUNT(*) FROM titles t
+         JOIN user_titles ut ON ut.title_id = t.id
+         WHERE t.year IS NOT NULL
+         GROUP BY t.year
+         ORDER BY t.year ASC"
+    ).map_err(|e| e.to_string())?;
+    let years: Vec<StatsYear> = stmt.query_map([], |r| Ok(StatsYear { year: r.get(0)?, count: r.get(1)? }))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // ---------- DECADES ----------
+    let mut stmt = conn.prepare(
+        "SELECT (t.year / 10) * 10 AS decade, COUNT(*) FROM titles t
+         JOIN user_titles ut ON ut.title_id = t.id
+         WHERE t.year IS NOT NULL
+         GROUP BY decade
+         ORDER BY decade ASC"
+    ).map_err(|e| e.to_string())?;
+    let decades: Vec<StatsDecade> = stmt.query_map([], |r| {
+        let d: i64 = r.get(0)?;
+        Ok(StatsDecade { decade: format!("{}s", d), count: r.get(1)? })
+    }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    // ---------- RATINGS ----------
+    let mut stmt = conn.prepare(
+        "SELECT CAST(rating AS INTEGER) AS r, COUNT(*) FROM user_titles
+         WHERE rating IS NOT NULL
+         GROUP BY r ORDER BY r ASC"
+    ).map_err(|e| e.to_string())?;
+    let mut rating_map: std::collections::HashMap<i64, i64> = std::collections::HashMap::new();
+    for row in stmt.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?))).map_err(|e| e.to_string())? {
+        let (k, v) = row.map_err(|e| e.to_string())?;
+        rating_map.insert(k, v);
+    }
+    let ratings: Vec<StatsRatingBucket> = (0..10).map(|i| StatsRatingBucket {
+        bucket: format!("{}-{}", i, i + 1),
+        count: *rating_map.get(&i).unwrap_or(&0),
+    }).collect();
+
+    // ---------- MONTHLY ----------
+    let mut stmt = conn.prepare(
+        "SELECT strftime('%Y-%m', watched_at) AS m, COUNT(*) FROM watch_entries
+         WHERE watched_at IS NOT NULL
+         GROUP BY m ORDER BY m ASC"
+    ).map_err(|e| e.to_string())?;
+    let monthly: Vec<StatsMonthly> = stmt.query_map([], |r| Ok(StatsMonthly { month: r.get(0)?, count: r.get(1)? }))
+        .map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    // ---------- TOP RATED ----------
+    let mut stmt = conn.prepare(
+        "SELECT t.title, t.poster_path, t.type, t.tmdb_id, ut.rating,
+                (SELECT COUNT(*) FROM watch_entries we WHERE we.user_title_id = ut.id AND we.is_rewatch = 1) AS rw
+         FROM user_titles ut JOIN titles t ON t.id = ut.title_id
+         WHERE ut.rating IS NOT NULL
+         ORDER BY ut.rating DESC, rw DESC
+         LIMIT 10"
+    ).map_err(|e| e.to_string())?;
+    let top_rated: Vec<StatsTopTitle> = stmt.query_map([], |r| {
+        let poster_path: Option<String> = r.get(1)?;
+        Ok(StatsTopTitle {
+            title: r.get(0)?,
+            poster_url: poster_path.map(|p| if p.starts_with("http") { p } else { format!("https://image.tmdb.org/t/p/w200{}", p) }),
+            type_field: r.get(2)?,
+            tmdb_id: r.get(3)?,
+            rating: r.get(4)?,
+            rewatch_count: r.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+
+    // ---------- MOST REWATCHED ----------
+    let mut stmt = conn.prepare(
+        "SELECT t.title, t.poster_path, t.type, t.tmdb_id, ut.rating,
+                COUNT(*) AS rw
+         FROM watch_entries we
+         JOIN user_titles ut ON ut.id = we.user_title_id
+         JOIN titles t ON t.id = ut.title_id
+         WHERE we.is_rewatch = 1
+         GROUP BY ut.id
+         ORDER BY rw DESC
+         LIMIT 10"
+    ).map_err(|e| e.to_string())?;
+    let most_rewatched: Vec<StatsTopTitle> = stmt.query_map([], |r| {
+        let poster_path: Option<String> = r.get(1)?;
+        Ok(StatsTopTitle {
+            title: r.get(0)?,
+            poster_url: poster_path.map(|p| if p.starts_with("http") { p } else { format!("https://image.tmdb.org/t/p/w200{}", p) }),
+            type_field: r.get(2)?,
+            tmdb_id: r.get(3)?,
+            rating: r.get(4)?,
+            rewatch_count: r.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    // ---------- WEEKDAYS ----------
+    // strftime('%w') → 0=Sunday, 1=Monday, ..., 6=Saturday
+    let mut stmt = conn.prepare(
+        "SELECT strftime('%w', watched_at) AS w, COUNT(*) FROM watch_entries
+         WHERE watched_at IS NOT NULL
+         GROUP BY w ORDER BY w ASC"
+    ).map_err(|e| e.to_string())?;
+    let weekdays: Vec<StatsWeekday> = stmt.query_map([], |r| {
+        Ok(StatsWeekday { weekday: r.get(0)?, count: r.get(1)? })
+    }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+	
+    Ok(StatsFull { overview, genres, years, decades, ratings, monthly, weekdays, top_rated, most_rewatched })
 }

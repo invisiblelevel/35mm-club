@@ -37,7 +37,6 @@ pub fn apply_migrations(conn: &Connection) -> std::result::Result<(), String> {
     conn.execute_batch(include_str!("../migrations/001_initial.sql"))
         .map_err(|e| format!("001: {}", e))?;
 
-    // 002 — ТОЛЬКО ОДИН РАЗ
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;

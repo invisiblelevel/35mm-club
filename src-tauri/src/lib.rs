@@ -8,6 +8,7 @@ mod shikimori;
 mod sync;
 mod tmdb;
 mod tv_tracker;
+mod bangumi;
 
 use db::Database;
 use std::sync::Arc;
@@ -57,7 +58,9 @@ pub fn run() {
             #[cfg(target_os = "android")]
             {
                 if let Err(e) = sync::android_multicast::acquire() {
+                    #[cfg(debug_assertions)]
                     eprintln!("[sync] MulticastLock: {}", e);
+                    let _ = e;
                 }
             }
 
@@ -72,7 +75,9 @@ pub fn run() {
                 let port = match sync::discovery::find_free_port() {
                     Ok(p) => p,
                     Err(e) => {
+                        #[cfg(debug_assertions)]
                         eprintln!("[sync] find_free_port: {}", e);
+                        let _ = e;
                         return;
                     }
                 };
@@ -84,8 +89,6 @@ pub fn run() {
                     port,
                 ).await {
                     Ok(actual_port) => {
-                        println!("[sync] listener on port {}", actual_port);
-
                         // 3. Регистрируем mDNS
                         match sync::discovery::register_service(
                             &identity_clone.device_id,
@@ -96,12 +99,19 @@ pub fn run() {
                                 let state = app_handle.state::<SyncState>();
                                 let mut guard = state.mdns.lock().await;
                                 *guard = Some(mdns);
-                                println!("[sync] mDNS registered");
                             }
-                            Err(e) => eprintln!("[sync] mDNS register: {}", e),
+                            Err(e) => {
+                                #[cfg(debug_assertions)]
+                                eprintln!("[sync] mDNS register: {}", e);
+                                let _ = e;
+                            }
                         }
                     }
-                    Err(e) => eprintln!("[sync] listener start: {}", e),
+                    Err(e) => {
+                        #[cfg(debug_assertions)]
+                        eprintln!("[sync] listener start: {}", e);
+                        let _ = e;
+                    }
                 }
 
                 let _ = (&app_handle, &app_dir_clone);
@@ -112,6 +122,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             // Существующие команды
+			commands::get_stats,
             commands::get_profile,
             commands::update_profile,
             commands::award_xp,
@@ -136,8 +147,8 @@ pub fn run() {
             commands::update_anime_progress,
             commands::export_data,
             commands::import_data,
-			diary_collections::get_rewatches,
-			diary_collections::get_all_rewatches,
+            diary_collections::get_rewatches,
+            diary_collections::get_all_rewatches,
             diary_collections::add_rewatch,
             diary_collections::delete_rewatch,
             tv_tracker::get_tv_seasons,

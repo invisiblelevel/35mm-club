@@ -440,7 +440,7 @@ VALUES
     ('short_and_sweet', 'time', 'game-icons:hourglass', 20, 'global', 'common', 'runtime_lt', 70, 1, 0, 'achievements.ach.short_and_sweet.title', 'achievements.ach.short_and_sweet.desc'),
 
     -- TV (СЕРИАЛЫ)
-    ('tv_firefly_browncoat', 'franchise', 'game-icons:spaceship', 60, 'global', 'epic', 'tv_episodes_completed', 1433, 1, 0, 'achievements.ach.tv_firefly_browncoat.title', 'achievements.ach.tv_firefly_browncoat.desc'),
+    ('tv_firefly_browncoat', 'franchise', 'game-icons:spaceship', 60, 'global', 'epic', 'tv_episodes_completed', 1437, 1, 0, 'achievements.ach.tv_firefly_browncoat.title', 'achievements.ach.tv_firefly_browncoat.desc'),
     ('tv_walking_dead_coral', 'franchise', 'game-icons:shambling-zombie', 80, 'global', 'legendary', 'tv_episodes_completed', 1402, 1, 0, 'achievements.ach.tv_walking_dead_coral.title', 'achievements.ach.tv_walking_dead_coral.desc'),
     ('tv_lost_numbers', 'franchise', 'game-icons:secret-book', 70, 'global', 'legendary', 'tv_episodes_completed', 4607, 1, 0, 'achievements.ach.tv_lost_numbers.title', 'achievements.ach.tv_lost_numbers.desc'),
     ('tv_prison_break_tattoo', 'franchise', 'game-icons:prisoner', 60, 'global', 'epic', 'tv_episodes_completed', 2288, 1, 0, 'achievements.ach.tv_prison_break_tattoo.title', 'achievements.ach.tv_prison_break_tattoo.desc'),

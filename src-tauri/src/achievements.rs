@@ -250,10 +250,17 @@ pub fn check_achievements_internal(conn: &Connection) -> Result<Vec<Achievement>
 
         if satisfied {
             conn.execute("INSERT INTO user_achievements (achievement_id) VALUES (?1)", [id]).map_err(|e| e.to_string())?;
-			let _ = crate::sync::log::record_user_achievement(conn, id);
+            let _ = crate::sync::log::record_user_achievement(conn, id);
             award_xp_internal(conn, xp_reward)?;
             newly_unlocked.push(Achievement { id, code, category, icon, xp_reward, scope, tier, is_secret: is_secret != 0, title_key, description_key, unlocked: true, unlocked_at: None });
         }
     }
+
+    // Если выпали ачивки — XP изменился, логируем профиль в sync_log,
+    // чтобы новый XP ушёл на другие устройства сразу, а не после следующего действия.
+    if !newly_unlocked.is_empty() {
+        let _ = crate::sync::log::record_profile(conn);
+    }
+
     Ok(newly_unlocked)
 }

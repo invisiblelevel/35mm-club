@@ -18,7 +18,8 @@
 
   import {
     Film, Tv, Clapperboard, BookOpen, FolderHeart,
-    Trophy, User, Settings, Search, Info, Loader2, Menu, X, Wifi
+    Trophy, User, Settings, Search, Info, Loader2, Menu, X, Wifi,
+    BarChart3
   } from 'lucide-svelte';
 
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -114,6 +115,7 @@
     { href: '/diary', key: 'nav.diary', icon: BookOpen },
     { href: '/collections', key: 'nav.collections', icon: FolderHeart },
     { href: '/achievements', key: 'nav.achievements', icon: Trophy },
+    { href: '/stats', key: 'nav.stats', icon: BarChart3 },
   ];
 
   async function changeLocale(l: Locale) {

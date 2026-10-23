@@ -41,7 +41,7 @@
         35<span class="text-gold">mm</span> Club
       </h1>
       <p class="text-xs text-zinc-500 mb-5">
-        {$t('about.version', { values: { v: '1.1.1' } })}
+        {$t('about.version', { values: { v: '1.2.0' } })}
       </p>
 
       <p class="text-sm leading-relaxed text-zinc-400">

@@ -167,3 +167,84 @@ pub struct RewatchDiaryEntry {
     pub type_field: String,
     pub tmdb_id: Option<i64>,
 }
+
+// ==========================================
+// СТАТИСТИКА
+// ==========================================
+
+#[derive(Debug, Serialize)]
+pub struct StatsOverview {
+    pub total_titles: i64,
+    pub total_movies: i64,
+    pub total_tv: i64,
+    pub total_anime: i64,
+    pub total_completed: i64,
+    pub total_watching: i64,
+    pub total_planned: i64,
+    pub total_on_hold: i64,
+    pub total_dropped: i64,
+    pub total_minutes: i64,       // суммарное время просмотра (из user_profile)
+    pub total_episodes: i64,      // отмеченные эпизоды сериалов + аниме
+    pub total_rewatches: i64,     // пересмотры
+    pub average_rating: Option<f64>,
+    pub rated_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsGenre {
+    pub genre: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsYear {
+    pub year: i64,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsRatingBucket {
+    pub bucket: String,   // "0-1", "1-2", ..., "9-10"
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsTopTitle {
+    pub title: String,
+    pub poster_url: Option<String>,
+    pub type_field: String,
+    pub tmdb_id: Option<i64>,
+    pub rating: Option<f64>,
+    pub rewatch_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsDecade {
+    pub decade: String,   // "1950s", "1960s", ...
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsMonthly {
+    pub month: String,    // "2026-01", "2026-02", ...
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsFull {
+    pub overview: StatsOverview,
+    pub genres: Vec<StatsGenre>,
+    pub years: Vec<StatsYear>,
+    pub decades: Vec<StatsDecade>,
+    pub ratings: Vec<StatsRatingBucket>,
+    pub monthly: Vec<StatsMonthly>,
+    pub weekdays: Vec<StatsWeekday>,   // ← новое
+    pub top_rated: Vec<StatsTopTitle>,
+    pub most_rewatched: Vec<StatsTopTitle>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StatsWeekday {
+    pub weekday: String,   // "0".."6" → "Пн".."Вс" на фронте
+    pub count: i64,
+}

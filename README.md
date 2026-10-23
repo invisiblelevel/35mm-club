@@ -2,7 +2,7 @@
 
 **Your cinema. Your rules.** · **Твоя кинотека. Твои правила.** · **你的影院。你的规则。**
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](../../releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](../../releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Android%208%2B-0078D6.svg)](#install)
 [![Tauri](https://img.shields.io/badge/tauri-2.12-24C8DB.svg)](https://tauri.app/)
@@ -17,17 +17,28 @@
 
 35mm Club is a local-first tracker for movies, TV shows and anime with achievements, XP, ranks and a military-style ribbon rack. All data lives in a single SQLite file on your device — no clouds, no accounts, no data collection.
 
-Add a title → track episodes → earn achievements → level up. Everything happens on your machine, nothing is sent anywhere except the public metadata APIs (TMDB, Shikimori, AniList).
+Add a title → track episodes → earn achievements → level up. Everything happens on your machine, nothing is sent anywhere except the public metadata APIs (TMDB, Shikimori, AniList, Bangumi).
 
 **Available on Windows and Android.**
+
+### What's new in 1.2.0
+
+- **Statistics** — a dedicated tab with overview cards (movies / TV / anime / average rating / time / episodes / rewatches), status donut chart, combined donut (ratings + monthly activity + weekdays), and top-rated / most-rewatched posters.
+- **Chinese anime search (zh-CN)** — now via Bangumi, with Chinese titles. Achievements work for Chinese search too.
+- **XP sync fix** — XP no longer rolls back when syncing; takes MAX. XP for achievements now goes into sync immediately.
+- **Search bar fix** — the top search bar now reacts to every query, not just the first one.
+- **Firefly achievement fix** — `tv_firefly_browncoat` used a wrong `tmdb_id` (1433 instead of 1437) and never triggered.
+- **Achievements fix** — a missing `if satisfied` block in `check_achievements_internal` made all achievements silently dead in 1.1.1. Fixed.
+- **Cleaner logs** — debug output only in dev builds.
 
 ### Features
 
 - **Three content types** — movies, TV shows, anime
 - **Episode tracker** — seasons, episodes, watch progress
-- **400+ achievements** — Common, Rare, Epic, Legendary, with custom icons and descriptions
+- **300+ achievements** — Common, Rare, Epic, Legendary, with custom icons and descriptions
 - **Ranks and XP** — 10 military-style ranks from Private to General
 - **Ribbon rack (kokarda)** — unlocks at level 20 (Major) and grows with level and achievements
+- **Statistics** — overview, status donut, combined donut (ratings / months / weekdays), top-rated and most-rewatched
 - **Wi-Fi sync** — one button on any device in the same network; syncs library, achievements, diary, notes and collections between your PC and phone. Pair once, then silent. No clouds, no accounts.
 - **Rewatch Tracker** — log rewatches with rating and notes, see how many times you've watched each title. Compact list, no clutter.
 - **Diary** — watch history with dates, ratings and notes, plus a dedicated **Rewatches** tab with all your rewatches across the library
@@ -65,7 +76,7 @@ Sync your library between PC and phone over local Wi-Fi. No cloud, no accounts, 
 4. On the other device, confirm the connection once (a popup will appear).
 5. Done. Next time just press **Sync** — it works silently.
 
-**What gets synced:** library (movies, TV, anime), ratings, notes, watch progress, achievements, diary, collections, rewatches. Resolves conflicts by most-recent change.
+**What gets synced:** library (movies, TV, anime), ratings, notes, watch progress, achievements, diary, collections, rewatches. Resolves conflicts by most-recent change. XP takes the maximum, never rolls back.
 
 **Not synced:** settings (theme, language), episode metadata (each device fetches its own).
 
@@ -73,13 +84,13 @@ Sync your library between PC and phone over local Wi-Fi. No cloud, no accounts, 
 
 ### Tech Stack
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · Bangumi (zh-CN) · mDNS · Ed25519
 
 ### Install
 
-**Windows:** Download **35mm Club Setup v1.1.1.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
+**Windows:** Download **35mm Club Setup v1.2.0.exe** from [Releases](../../releases), run, install (choose English / Russian / Chinese). No dependencies needed — everything is bundled, including WebView2 runtime.
 
-**Android:** Download **35mm Club v1.1.1.apk** from [Releases](../../releases), allow installation from unknown sources, install.
+**Android:** Download **35mm Club v1.2.0.apk** from [Releases](../../releases), allow installation from unknown sources, install.
 
 Windows 10 version 1903 or newer / Windows 11 (64-bit) · Android 8.0 or newer.
 
@@ -111,6 +122,8 @@ The Windows installer will appear in `src-tauri/target/release/bundle/nsis/`. Th
 
 Back it up before updating. Use **Settings → Backup → Export** for a portable JSON backup.
 
+> **Android note:** Auto Backup is disabled (`android:allowBackup="false"`). Uninstalling removes the database. If you had a backup from an older version, remove it in **Google → Backup** so a fresh install starts clean.
+
 ### License
 
 MIT — see [LICENSE](LICENSE).
@@ -125,17 +138,28 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 35mm Club — локальный трекер фильмов, сериалов и аниме с ачивками, XP, званиями и генеральской кокардой. Все данные лежат в одном файле SQLite на твоём устройстве — без облаков, аккаунтов и сбора данных.
 
-Добавил тайтл → отметил серии → получил ачивку → поднял уровень. Всё происходит на твоей машине, наружу уходят только запросы к публичным API метаданных (TMDB, Shikimori, AniList).
+Добавил тайтл → отметил серии → получил ачивку → поднял уровень. Всё происходит на твоей машине, наружу уходят только запросы к публичным API метаданных (TMDB, Shikimori, AniList, Bangumi).
 
 **Доступно на Windows и Android.**
+
+### Что нового в 1.2.0
+
+- **Статистика** — отдельная вкладка: карточки (фильмы / сериалы / аниме / средняя оценка / время / эпизоды / пересмотры), круговая диаграмма статусов, комбинированный донат (рейтинги + активность по месяцам + дни недели), топы по оценке и пересмотрам.
+- **Китайский поиск аниме (zh-CN)** — через Bangumi, с китайскими названиями. Ачивки для китайского поиска тоже работают.
+- **Синк XP** — опыт больше не откатывается при синхронизации, берётся по максимуму. XP за ачивки уходит в синк сразу.
+- **Фикс строки поиска** — верхняя строка теперь реагирует на каждый запрос, а не только на первый.
+- **Фикс ачивки «Светлячок»** — `tv_firefly_browncoat` использовала неверный `tmdb_id` (1433 вместо 1437) и никогда не выпадала.
+- **Фикс ачивок** — пропавший блок `if satisfied` в `check_achievements_internal` полностью убивал все ачивки в 1.1.1. Исправлено.
+- **Чистые логи** — отладочный вывод только в dev-сборке.
 
 ### Что умеет
 
 - **Три типа контента** — фильмы, сериалы, аниме
 - **Трекер серий** — сезоны, эпизоды, прогресс просмотра
-- **400+ ачивок** — Common, Rare, Epic, Legendary, с кастомными иконками и описаниями
+- **300+ ачивок** — Common, Rare, Epic, Legendary, с кастомными иконками и описаниями
 - **Звания и XP** — 10 военных званий от Рядового до Генерала
 - **Кокарда (планки)** — открывается на 20 уровне (Майор) и растёт вместе с уровнем и ачивками
+- **Статистика** — обзор, круговая диаграмма статусов, комбинированный донат (рейтинги / месяцы / дни недели), топы по оценке и пересмотрам
 - **Синхронизация по Wi-Fi** — одна кнопка на любом устройстве в одной сети; синкает библиотеку, ачивки, дневник, заметки и коллекции между ПК и телефоном. Один раз подтвердил — дальше молча. Без облаков и аккаунтов.
 - **Пересмотры** — записывай пересмотры с оценкой и заметкой, смотри, сколько раз ты пересматривал каждый тайтл. Компактный список, без простыней.
 - **Дневник** — история просмотров с датами, оценками и заметками + отдельная вкладка **«Пересмотры»** со всеми пересмотрами по библиотеке
@@ -173,7 +197,7 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 4. На втором устройстве подтверди подключение один раз (всплывёт окно).
 5. Готово. В следующий раз просто жми **Синхронизировать** — работает молча.
 
-**Что синкается:** библиотека (фильмы, сериалы, аниме), рейтинги, заметки, прогресс просмотра, ачивки, дневник, коллекции, пересмотры. Конфликты решаются по самому свежему изменению.
+**Что синкается:** библиотека (фильмы, сериалы, аниме), рейтинги, заметки, прогресс просмотра, ачивки, дневник, коллекции, пересмотры. Конфликты решаются по самому свежему изменению. XP берётся по максимуму, не откатывается.
 
 **Что не синкается:** настройки (тема, язык), метаданные серий (каждое устройство тянет само).
 
@@ -181,13 +205,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 ### Стек
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · Bangumi (zh-CN) · mDNS · Ed25519
 
 ### Установка
 
-**Windows:** Скачай **35mm Club Setup v1.1.1.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
+**Windows:** Скачай **35mm Club Setup v1.2.0.exe** из раздела [Releases](../../releases), запусти, установи (выбери язык: русский / английский / китайский). Зависимости не нужны — всё вшито в инсталлер, включая WebView2.
 
-**Android:** Скачай **35mm Club v1.1.1.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
+**Android:** Скачай **35mm Club v1.2.0.apk** из раздела [Releases](../../releases), разреши установку из неизвестных источников, установи.
 
 Поддерживается Windows 10 (версия 1903+) / Windows 11 (64-bit) · Android 8.0+.
 
@@ -219,6 +243,8 @@ Windows-установщик появится в `src-tauri/target/release/bundl
 
 Сделай бэкап перед обновлением. Для переноса между устройствами — **Настройки → Резервная копия → Экспорт**.
 
+> **Android:** Auto Backup отключён (`android:allowBackup="false"`). При удалении приложения база стирается. Если остался бэкап от старой версии — удали его в **Google → Резервное копирование**, чтобы свежая установка началась с чистого листа.
+
 ### Лицензия
 
 MIT — см. [LICENSE](LICENSE).
@@ -233,17 +259,28 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 35mm Club 是一款本地优先的电影、剧集和动漫追踪器，带有成就、经验值、军衔和将军式勋表。所有数据存储在你设备上的单个 SQLite 文件中——无云端、无账号、无数据收集。
 
-添加条目 → 记录剧集 → 获得成就 → 升级。所有操作都在本机完成，只有元数据请求会发送到公开 API（TMDB、Shikimori、AniList）。
+添加条目 → 记录剧集 → 获得成就 → 升级。所有操作都在本机完成，只有元数据请求会发送到公开 API（TMDB、Shikimori、AniList、Bangumi）。
 
 **支持 Windows 和 Android。**
+
+### 1.2.0 新功能
+
+- **统计** — 独立标签页：卡片（电影 / 剧集 / 动漫 / 平均评分 / 时长 / 剧集数 / 重看次数）、状态环形图、组合环形图（评分 + 每月活动 + 星期几）、最高评分与最多重看排行。
+- **中文动漫搜索 (zh-CN)** — 通过 Bangumi，带中文标题。中文搜索同样支持成就。
+- **XP 同步修复** — 同步时经验值不再回退，取最大值。成就获得的 XP 立即进入同步。
+- **搜索栏修复** — 顶部搜索栏现在响应每次查询，而不仅是第一次。
+- **《萤火虫》成就修复** — `tv_firefly_browncoat` 使用了错误的 `tmdb_id`（1433 而非 1437），从未触发。
+- **成就修复** — `check_achievements_internal` 中缺失的 `if satisfied` 代码块导致 1.1.1 中所有成就静默失效。已修复。
+- **更干净的日志** — 调试输出仅在开发版本中显示。
 
 ### 功能
 
 - **三种内容类型** — 电影、剧集、动漫
 - **剧集追踪** — 季、集、观看进度
-- **400+ 个成就** — 普通、稀有、史诗、传奇，自定义图标和描述
+- **300+ 个成就** — 普通、稀有、史诗、传奇，自定义图标和描述
 - **军衔与经验值** — 10 个军事风格军衔，从列兵到将军
 - **勋表（кокарда）** — 20 级（少校）解锁，随等级和成就成长
+- **统计** — 概览、状态环形图、组合环形图（评分 / 月份 / 星期几）、最高评分与最多重看排行
 - **Wi-Fi 同步** — 在同一网络的任意设备上按一个按钮；在 PC 和手机之间同步媒体库、成就、日记、笔记和收藏集。配对一次，之后静默运行。无云端、无账号。
 - **重看追踪** — 记录重看评分和笔记，查看每部作品的重看次数。紧凑列表，不杂乱。
 - **观影日记** — 带日期、评分和笔记的观看历史，另有独立的 **「重看」** 标签页，显示整个媒体库的所有重看记录
@@ -281,7 +318,7 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 4. 在另一台设备上确认连接一次（会弹出窗口）。
 5. 完成。下次只需按 **同步** — 会静默运行。
 
-**同步内容：** 媒体库（电影、剧集、动漫）、评分、笔记、观看进度、成就、日记、收藏集、重看记录。冲突按最新更改解决。
+**同步内容：** 媒体库（电影、剧集、动漫）、评分、笔记、观看进度、成就、日记、收藏集、重看记录。冲突按最新更改解决。XP 取最大值，不会回退。
 
 **不同步：** 设置（主题、语言）、剧集元数据（每台设备自行获取）。
 
@@ -289,13 +326,13 @@ INV.LVL · [@invisiblelevel](https://github.com/invisiblelevel)
 
 ### 技术栈
 
-Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · mDNS · Ed25519
+Tauri 2.12 · SvelteKit + Svelte 5 (runes) · TypeScript · Rust · SQLite (bundled) · TMDB · Shikimori · AniList · Bangumi (zh-CN) · mDNS · Ed25519
 
 ### 安装
 
-**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.1.1.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
+**Windows:** 从 [Releases](../../releases) 下载 **35mm Club Setup v1.2.0.exe**，运行并安装（可选英语 / 俄语 / 中文）。无需任何依赖 — 全部已打包，含 WebView2 运行时。
 
-**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.1.1.apk**，允许从未知来源安装，然后安装。
+**Android:** 从 [Releases](../../releases) 下载 **35mm Club v1.2.0.apk**，允许从未知来源安装，然后安装。
 
 支持 Windows 10（1903 或更新版本）/ Windows 11（64 位）· Android 8.0+。
 
@@ -326,6 +363,8 @@ Windows 安装包将生成于 `src-tauri/target/release/bundle/nsis/`。Android 
 - **Android:** 应用内部存储（使用 **设置 → 备份 → 导出数据**）。
 
 更新前请备份。跨设备迁移 — **设置 → 备份 → 导出**。
+
+> **Android:** 已禁用 Auto Backup（`android:allowBackup="false"`）。卸载应用会删除数据库。如果旧版本留下了备份 — 请在 **Google → 备份** 中删除它，以便全新安装从干净状态开始。
 
 ### 许可证
 

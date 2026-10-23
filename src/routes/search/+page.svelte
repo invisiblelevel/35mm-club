@@ -3,7 +3,6 @@
   import { t, locale } from 'svelte-i18n';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { afterNavigate } from '$app/navigation';
   import { Search, Star, Library, Film, Sparkles } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import TitleModal from '$lib/components/TitleModal.svelte';
@@ -35,42 +34,60 @@
   let error = $state('');
   let selectedTmdb: MovieItem | null = $state(null);
   let selectedAnime: AnimeItem | null = $state(null);
-  let lastUrlQ = '';
 
   const TMDB_IMG = 'https://image.tmdb.org/t/p/w200';
-  const TMDB_IMG_BIG = 'https://image.tmdb.org/t/p/w500';
+
+  let searchGeneration = 0;
 
   async function runSearch() {
-    if (!query.trim()) {
-      tmdbResults = []; animeResults = []; localResults = [];
+    const q = query.trim();
+    if (!q) {
+      tmdbResults = [];
+      animeResults = [];
+      localResults = [];
       return;
     }
+
+    const myGeneration = ++searchGeneration;
     loading = true;
     error = '';
 
-    // Запускаем три запроса параллельно. Каждый обновляет свой массив сразу, как только ответил.
-    const localPromise = invoke<LocalItem[]>('search_local_library', { query, contentType: null })
-      .then(res => { localResults = res; })
-      .catch(e => { console.error('local search failed:', e); });
-
-    const tmdbPromise = invoke<MovieItem[]>('search_movies', { query, mediaType: 'multi', apiKey: settings.tmdbKey || null, locale: $locale })
+    const localPromise = invoke<LocalItem[]>('search_local_library', { query: q, contentType: null })
       .then(res => {
+        if (myGeneration === searchGeneration) localResults = res;
+      })
+      .catch(e => {
+        console.error('local search failed:', e);
+      });
+
+    const tmdbPromise = invoke<MovieItem[]>('search_movies', {
+      query: q,
+      mediaType: 'multi',
+      apiKey: settings.tmdbKey || null,
+      locale: $locale,
+    })
+      .then(res => {
+        if (myGeneration !== searchGeneration) return;
         tmdbResults = res.filter(item => {
           const isAnime = item.original_language === 'ja' && item.genre_ids.includes(16);
           return !isAnime;
         });
       })
-      .catch(e => { console.error('tmdb search failed:', e); });
+      .catch(e => {
+        console.error('tmdb search failed:', e);
+      });
 
-    const animePromise = invoke<AnimeItem[]>('search_anime', { query, locale: $locale })
-      .then(res => { animeResults = res; })
-      .catch(e => { console.error('anime search failed:', e); });
+    const animePromise = invoke<AnimeItem[]>('search_anime', { query: q, locale: $locale })
+      .then(res => {
+        if (myGeneration === searchGeneration) animeResults = res;
+      })
+      .catch(e => {
+        console.error('anime search failed:', e);
+      });
 
-    try {
-      await Promise.allSettled([localPromise, tmdbPromise, animePromise]);
-    } catch (e) {
-      error = String(e);
-    } finally {
+    await Promise.allSettled([localPromise, tmdbPromise, animePromise]);
+
+    if (myGeneration === searchGeneration) {
       loading = false;
     }
   }
@@ -83,8 +100,9 @@
   }
 
   function onSearchClick() {
+    // Только обновляем URL — $effect на page.url.searchParams сам дёрнет runSearch().
+    // Так и хедер, и кнопка, и Enter в инпуте идут одним путём, без двойных запросов.
     syncUrl();
-    runSearch();
   }
 
   function imgFallback(e: Event) {
@@ -96,23 +114,28 @@
     }
   }
 
-  afterNavigate(({ to }) => {
-    if (!to || to.url.pathname !== '/search') return;
-    const q = to.url.searchParams.get('q') ?? '';
-    if (q === lastUrlQ) return;
-    lastUrlQ = q;
-    if (q !== query) {
-      query = q;
-      if (q) runSearch();
-      else { tmdbResults = []; animeResults = []; localResults = []; }
-    }
+  // Реагируем на изменение q в URL (в т.ч. из хедера).
+  // $effect на page.url.searchParams ловит и первый заход, и повторные goto.
+  let lastQ = $state<string | null>(null);
+  $effect(() => {
+    const q = page.url.searchParams.get('q') ?? '';
+    if (q === lastQ) return;
+    lastQ = q;
+    if (q !== query) query = q;
+    if (q) runSearch();
   });
 
   let lastLocale = $state('');
   $effect(() => {
     const l = $locale;
-    if (lastLocale === '') { lastLocale = l; return; }
-    if (lastLocale !== l) { lastLocale = l; if (query.trim()) runSearch(); }
+    if (lastLocale === '') {
+      lastLocale = l;
+      return;
+    }
+    if (lastLocale !== l) {
+      lastLocale = l;
+      if (query.trim()) runSearch();
+    }
   });
 </script>
 
@@ -153,15 +176,7 @@
           <a href={`/title/${item.tmdb_id}?type=${item.type_field}`} class="block rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300">
             <div class="aspect-[2/3] bg-ink-light overflow-hidden">
               {#if item.poster_path}
-                <img
-                  src={TMDB_IMG + item.poster_path}
-                  alt={item.title}
-                  loading={i < 6 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  fetchpriority={i < 6 ? 'high' : 'low'}
-                  onerror={imgFallback}
-                  class="w-full h-full object-cover"
-                />
+                <img src={TMDB_IMG + item.poster_path} alt={item.title} loading={i < 6 ? 'eager' : 'lazy'} decoding="async" onerror={imgFallback} class="w-full h-full object-cover" />
               {:else}
                 <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
               {/if}
@@ -190,15 +205,7 @@
           <button type="button" onclick={() => selectedTmdb = item} class="group text-left rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300 cursor-pointer">
             <div class="aspect-[2/3] bg-ink-light overflow-hidden">
               {#if item.poster_url}
-                <img
-                  src={item.poster_url.startsWith('http') ? item.poster_url.replace('/w500/', '/w200/') : TMDB_IMG + item.poster_url}
-                  alt={item.title}
-                  loading={i < 6 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  fetchpriority={i < 6 ? 'high' : 'low'}
-                  onerror={imgFallback}
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+                <img src={item.poster_url.startsWith('http') ? item.poster_url.replace('/w500/', '/w200/') : TMDB_IMG + item.poster_url} alt={item.title} loading={i < 6 ? 'eager' : 'lazy'} decoding="async" onerror={imgFallback} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {:else}
                 <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
               {/if}
@@ -208,7 +215,7 @@
               <div class="flex items-center justify-between mt-1">
                 <span class="text-[10px] md:text-xs text-zinc-500">{item.year ?? '—'}</span>
                 {#if item.rating}
-                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} class="md:size-3" fill="currentColor" />{item.rating.toFixed(1)}</span>
+                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} fill="currentColor" />{item.rating.toFixed(1)}</span>
                 {/if}
               </div>
             </div>
@@ -222,22 +229,14 @@
     <section class="space-y-4">
       <h2 class="font-display text-lg md:text-xl font-semibold flex items-center gap-2">
         <Sparkles size={18} class="text-gold" />
-        Аниме <span class="text-sm font-normal text-zinc-500">({animeResults.length})</span>
+        {$t('nav.anime')} <span class="text-sm font-normal text-zinc-500">({animeResults.length})</span>
       </h2>
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
         {#each animeResults as item, i (item.mal_id)}
           <button type="button" onclick={() => selectedAnime = item} class="group text-left rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300 cursor-pointer">
             <div class="aspect-[2/3] bg-ink-light overflow-hidden">
               {#if item.cover_url}
-                <img
-                  src={item.cover_url}
-                  alt={item.title}
-                  loading={i < 6 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  fetchpriority={i < 6 ? 'high' : 'low'}
-                  onerror={imgFallback}
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+                <img src={item.cover_url} alt={item.title} loading={i < 6 ? 'eager' : 'lazy'} decoding="async" onerror={imgFallback} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {:else}
                 <div class="w-full h-full flex items-center justify-center text-zinc-600"><Film size={48} /></div>
               {/if}
@@ -247,7 +246,7 @@
               <div class="flex items-center justify-between mt-1">
                 <span class="text-[10px] md:text-xs text-zinc-500">{item.year ?? '—'}</span>
                 {#if item.average_score}
-                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} class="md:size-3" fill="currentColor" />{item.average_score.toFixed(1)}</span>
+                  <span class="flex items-center gap-1 text-[10px] md:text-xs text-gold"><Star size={10} fill="currentColor" />{item.average_score.toFixed(1)}</span>
                 {/if}
               </div>
             </div>
@@ -263,9 +262,9 @@
 </div>
 
 {#if selectedTmdb}
-  <TitleModal item={selectedTmdb} onClose={() => { selectedTmdb = null; runSearch(); }} />
+  <TitleModal item={selectedTmdb} onClose={() => { selectedTmdb = null; }} />
 {/if}
 
 {#if selectedAnime}
-  <AnimeModal item={selectedAnime} onClose={() => { selectedAnime = null; runSearch(); }} />
+  <AnimeModal item={selectedAnime} onClose={() => { selectedAnime = null; }} />
 {/if}
