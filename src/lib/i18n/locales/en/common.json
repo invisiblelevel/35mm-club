@@ -238,7 +238,11 @@
     "sync_pair_button": "Connect",
     "sync_toast_done": "Synced",
     "sync_toast_pairing": "New device found",
-    "sync_toast_pairing_hint": "Open Settings → Sync to connect"
+    "sync_toast_pairing_hint": "Open Settings → Sync to connect",
+	"clear_cover_cache": "Clear cover cache",
+    "clear_cover_cache_hint": "Removes covers not used in the library. Cache refreshes automatically every 30 days.",
+    "clear_cover_cache_confirm": "Clear cover cache? Covers in your library will stay.",
+    "clear_cover_cache_done": "Removed {count} files"
   },
     "stats": {
 	"hero_summary": "You've watched {titles} titles — that's {hours} hours of screen time.",

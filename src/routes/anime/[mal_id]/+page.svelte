@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { ArrowLeft, Star, Clock, Film, Check, Plus, Minus, FolderPlus, Repeat } from 'lucide-svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   type AnimeDetails = {
     mal_id: number;
@@ -48,7 +49,6 @@
   let collections: CollectionOption[] = $state([]);
   let showCollectionPicker = $state(false);
 
-  // Rewatch Tracker
   let rewatches: RewatchEntry[] = $state([]);
   let showRewatchModal = $state(false);
   let rewatchRating = $state(0);
@@ -56,7 +56,20 @@
   let savingRewatch = $state(false);
   let showAllRewatches = $state(false);
 
+  let coverSrc = $state<string | null>(null);
+  let coverOriginal = $state<string | null>(null);
+
   const malId = $derived(Number(page.params.mal_id));
+
+  async function cacheCover(url: string | null): Promise<string | null> {
+    if (!url) return null;
+    if (!url.startsWith('http')) return url;
+    try {
+      return await invoke<string>('cache_cover', { url });
+    } catch (e) {
+      return url;
+    }
+  }
 
   async function load() {
     loading = true;
@@ -67,6 +80,13 @@
       ]);
       details = d;
       watchedEpisodes = prog;
+      coverOriginal = d.cover_url;
+      if (d.cover_url) {
+        const cached = await cacheCover(d.cover_url);
+        coverSrc = cached;
+      } else {
+        coverSrc = null;
+      }
       await loadUserData();
     } catch (e) {
       error = String(e);
@@ -220,6 +240,15 @@
     } catch { return iso; }
   }
 
+  function imgError(e: Event) {
+    const img = e.currentTarget as HTMLImageElement;
+    if (coverOriginal && img.src !== coverOriginal) {
+      img.src = coverOriginal;
+      return;
+    }
+    img.style.display = 'none';
+  }
+
   onMount(load);
 
   let lastLocale = $state('');
@@ -242,14 +271,25 @@
   </button>
 
   {#if loading}
-    <div class="text-center text-zinc-500 py-20">{$t('title_page.loading')}</div>
+    <div class="flex flex-col items-center justify-center py-20 gap-4">
+      <Spinner size={48} />
+      <p class="text-zinc-500">{$t('title_page.loading')}</p>
+    </div>
   {:else if error}
     <div class="p-4 rounded-lg bg-red-950/50 border border-red-800 text-sm text-red-200"><pre class="whitespace-pre-wrap">{error}</pre></div>
   {:else if details}
     <div class="relative rounded-2xl overflow-hidden mb-6 md:mb-8 bg-surface border border-border">
       <div class="relative flex flex-col md:flex-row gap-4 md:gap-8 p-4 md:p-8">
-        {#if details.cover_url}
-          <img src={details.cover_url} alt={details.title} class="w-full md:w-56 h-48 md:h-84 object-cover rounded-xl shadow-2xl shrink-0" />
+        {#if coverSrc}
+          <img
+            src={coverSrc}
+            alt={details.title}
+            loading="eager"
+            decoding="sync"
+            referrerpolicy="no-referrer"
+            onerror={imgError}
+            class="w-full md:w-56 h-48 md:h-84 object-cover rounded-xl shadow-2xl shrink-0"
+          />
         {:else}
           <div class="w-full md:w-56 h-48 md:h-84 bg-ink-light rounded-xl flex items-center justify-center text-zinc-600 shrink-0"><Film size={48} /></div>
         {/if}

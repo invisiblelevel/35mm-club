@@ -1,6 +1,7 @@
 mod achievements;
 mod anilist;
 mod commands;
+mod cover_cache;
 mod db;
 mod diary_collections;
 mod models;
@@ -38,6 +39,14 @@ pub fn run() {
             {
                 let conn = database.conn.lock().expect("failed to lock db");
                 db::apply_migrations(&conn).expect("failed to apply migrations");
+            }
+
+            // Автоочистка кэша обложек (раз в 30 дней, только неиспользуемые)
+            {
+                let conn = database.conn.lock().expect("failed to lock db");
+                if cover_cache::should_cleanup(&conn) {
+                    let _ = cover_cache::cleanup(&conn, &app_dir, false);
+                }
             }
 
             // Инициализация identity (генерация ключа при первом запуске)
@@ -122,7 +131,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             // Существующие команды
-			commands::get_stats,
+            commands::get_stats,
             commands::get_profile,
             commands::update_profile,
             commands::award_xp,
@@ -147,6 +156,9 @@ pub fn run() {
             commands::update_anime_progress,
             commands::export_data,
             commands::import_data,
+            // Кэш обложек
+            commands::cache_cover,
+            commands::cleanup_cover_cache,
             diary_collections::get_rewatches,
             diary_collections::get_all_rewatches,
             diary_collections::add_rewatch,

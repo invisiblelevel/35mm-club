@@ -19,6 +19,8 @@
   let refreshMsg = $state('');
   let refreshError = $state('');
   let backupMsg = $state('');
+  let clearingCache = $state(false);
+  let cacheMsg = $state('');
 
   let tmdbKey = $state(settings.tmdbKey);
 
@@ -265,6 +267,20 @@
     }
   }
 
+  async function clearCoverCache() {
+    if (!confirm($t('settings.clear_cover_cache_confirm'))) return;
+    clearingCache = true;
+    cacheMsg = '';
+    try {
+      const removed = await invoke<number>('cleanup_cover_cache', { force: true });
+      cacheMsg = $t('settings.clear_cover_cache_done', { values: { count: removed } });
+    } catch (e) {
+      cacheMsg = String(e);
+    } finally {
+      clearingCache = false;
+    }
+  }
+
   async function exportData() {
     exporting = true;
     backupMsg = '';
@@ -500,6 +516,21 @@
           {refreshingLang ? $t('common.loading') : $t('settings.refresh_language')}
         </button>
         <p class="text-xs text-zinc-500 mt-1">{$t('settings.refresh_language_hint')}</p>
+      </div>
+
+      <div>
+        <button
+          onclick={clearCoverCache}
+          disabled={clearingCache}
+          class="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-ink-light border border-border text-zinc-300 hover:border-gold hover:text-gold transition-all active:scale-[0.98] text-sm disabled:opacity-50 text-left"
+        >
+          <Trash2 size={16} class={clearingCache ? 'animate-spin' : ''} />
+          {clearingCache ? $t('common.loading') : $t('settings.clear_cover_cache')}
+        </button>
+        <p class="text-xs text-zinc-500 mt-1">{$t('settings.clear_cover_cache_hint')}</p>
+        {#if cacheMsg}
+          <div class="mt-2 p-2 rounded-lg bg-emerald-950/50 border border-emerald-800 text-xs text-emerald-200">{cacheMsg}</div>
+        {/if}
       </div>
 
       {#if refreshMsg}

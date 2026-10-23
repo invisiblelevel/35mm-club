@@ -30,8 +30,8 @@ impl Database {
 /// поэтому новые ачивки, дописанные в 001_initial.sql, подтягиваются
 /// на всех устройствах при следующем запуске. Данные пользователя не трогаются.
 ///
-/// 002 — только один раз, для устройств, где ещё не применялась
-/// (проверяем по PRAGMA user_version). После применения ставит user_version = 2.
+/// 002 — только один раз, для устройств, где ещё не применялась.
+/// 003 — кэш обложек, тоже один раз.
 pub fn apply_migrations(conn: &Connection) -> std::result::Result<(), String> {
     // 001 — ВСЕГДА
     conn.execute_batch(include_str!("../migrations/001_initial.sql"))
@@ -44,6 +44,12 @@ pub fn apply_migrations(conn: &Connection) -> std::result::Result<(), String> {
     if version < 2 {
         conn.execute_batch(include_str!("../migrations/002_sync.sql"))
             .map_err(|e| format!("002: {}", e))?;
+    }
+
+    if version < 3 {
+        conn.execute_batch(include_str!("../migrations/003_cover_cache.sql"))
+            .map_err(|e| format!("003: {}", e))?;
+        conn.execute_batch("PRAGMA user_version = 3").map_err(|e| e.to_string())?;
     }
 
     Ok(())

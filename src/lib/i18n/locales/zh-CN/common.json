@@ -238,7 +238,11 @@
     "sync_pair_button": "连接",
     "sync_toast_done": "已同步",
     "sync_toast_pairing": "发现新设备",
-    "sync_toast_pairing_hint": "打开 设置 → 同步 进行连接"
+    "sync_toast_pairing_hint": "打开 设置 → 同步 进行连接",
+	"clear_cover_cache": "清除封面缓存",
+    "clear_cover_cache_hint": "删除媒体库中未使用的封面。缓存每 30 天自动刷新一次。",
+    "clear_cover_cache_confirm": "清除封面缓存？媒体库中的封面会保留。",
+    "clear_cover_cache_done": "已删除 {count} 个文件"
   },
     "stats": {
 	"hero_summary": "你已观看 {titles} 部作品 — 共 {hours} 小时。",

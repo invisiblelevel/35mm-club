@@ -137,6 +137,13 @@ pub fn add_to_library(db: State<'_, Arc<Database>>, payload: AddToLibraryPayload
     let company_json = serde_json::to_string(&payload.production_company_ids.clone().unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
     let keyword_json = serde_json::to_string(&payload.keyword_ids.clone().unwrap_or_default()).unwrap_or_else(|_| "[]".to_string());
 
+    // Не сохраняем data URL в poster_path — только нормальные пути/URL
+    let poster_path_clean: Option<String> = payload.poster_path.as_ref().and_then(|p| {
+        if p.starts_with("data:") { None }
+        else if p.starts_with("//") { Some(format!("https:{}", p)) }
+        else { Some(p.clone()) }
+    });
+
     let title_id = match existing {
         Some(id) => {
             conn.execute("INSERT INTO title_metadata (title_id, cast_ids, director_ids, runtime, release_year, collection_id, producer_ids, production_company_ids, keyword_ids) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ON CONFLICT(title_id) DO UPDATE SET cast_ids = excluded.cast_ids, director_ids = excluded.director_ids, runtime = excluded.runtime, release_year = excluded.release_year, collection_id = COALESCE(excluded.collection_id, title_metadata.collection_id), producer_ids = excluded.producer_ids, production_company_ids = excluded.production_company_ids, keyword_ids = excluded.keyword_ids", rusqlite::params![id, cast_json, dir_json, payload.runtime, payload.year, payload.collection_id, producer_json, company_json, keyword_json]).map_err(|e| e.to_string())?;
@@ -144,7 +151,7 @@ pub fn add_to_library(db: State<'_, Arc<Database>>, payload: AddToLibraryPayload
         }
         None => {
             let locale = payload.locale.clone().unwrap_or_else(|| "ru".to_string());
-            conn.execute("INSERT INTO titles (tmdb_id, type, title, original_title, year, poster_path, overview, imdb_rating, runtime, language) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", rusqlite::params![payload.tmdb_id, payload.type_field, payload.title, payload.original_title, payload.year, payload.poster_path, payload.overview, payload.imdb_rating, payload.runtime, locale]).map_err(|e| e.to_string())?;
+            conn.execute("INSERT INTO titles (tmdb_id, type, title, original_title, year, poster_path, overview, imdb_rating, runtime, language) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", rusqlite::params![payload.tmdb_id, payload.type_field, payload.title, payload.original_title, payload.year, poster_path_clean, payload.overview, payload.imdb_rating, payload.runtime, locale]).map_err(|e| e.to_string())?;
             let new_id = conn.last_insert_rowid();
             conn.execute("INSERT INTO title_metadata (title_id, cast_ids, director_ids, runtime, release_year, collection_id, producer_ids, production_company_ids, keyword_ids) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", rusqlite::params![new_id, cast_json, dir_json, payload.runtime, payload.year, payload.collection_id, producer_json, company_json, keyword_json]).map_err(|e| e.to_string())?;
             new_id
@@ -440,9 +447,17 @@ pub async fn get_anime_details(
                 let studio: Option<String> = r.get(7)?;
                 let year: Option<i64> = r.get(8)?;
 
-                let cover_url = poster_path.map(|p| {
-                    if p.starts_with("http") { p }
-                    else { format!("https://image.tmdb.org/t/p/w500{}", p) }
+                let cover_url = poster_path.and_then(|p| {
+                    if p.starts_with("data:") {
+                        // мусор из старых версий — игнорируем, будет fallback ниже
+                        None
+                    } else if p.starts_with("//") {
+                        Some(format!("https:{}", p))
+                    } else if p.starts_with("http") {
+                        Some(p)
+                    } else {
+                        Some(format!("https://image.tmdb.org/t/p/w500{}", p))
+                    }
                 });
 
                 Ok(crate::shikimori::ShikiAnimeDetails {
@@ -464,11 +479,21 @@ pub async fn get_anime_details(
         ).ok()
     };
 
+    // Из БД — только если постер адекватный
     if let Some(details) = from_db {
-        return Ok(details);
+        if details.cover_url.is_some() {
+            return Ok(details);
+        }
     }
 
     let mut details = crate::shikimori::get_anime_details(mal_id, &locale).await?;
+
+    // Нормализуем protocol-relative URL
+    if let Some(c) = &details.cover_url {
+        if c.starts_with("//") {
+            details.cover_url = Some(format!("https:{}", c));
+        }
+    }
 
     if locale != "ru" {
         if let Some(en_desc) = crate::anilist::get_description_by_mal_id(mal_id).await {
@@ -493,6 +518,13 @@ pub async fn add_anime_to_library(
         [mal_id], |r| r.get(0)
     ).ok();
 
+    // Не сохраняем data URL в poster_path
+    let cover_clean: Option<String> = payload.cover_url.as_ref().and_then(|p| {
+        if p.starts_with("data:") { None }
+        else if p.starts_with("//") { Some(format!("https:{}", p)) }
+        else { Some(p.clone()) }
+    });
+
     let title_id = match existing {
         Some(id) => id,
         None => {
@@ -503,7 +535,7 @@ pub async fn add_anime_to_library(
                     mal_id,
                     payload.title,
                     payload.description,
-                    payload.cover_url,
+                    cover_clean,
                     payload.episodes,
                     payload.format,
                     payload.status,
@@ -946,7 +978,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
     use crate::models::*;
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
 
-    // ---------- OVERVIEW ----------
     let total_titles: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles", [], |r| r.get(0)).unwrap_or(0);
     let total_movies: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'movie'", [], |r| r.get(0)).unwrap_or(0);
     let total_tv: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles ut JOIN titles t ON t.id = ut.title_id WHERE t.type = 'tv'", [], |r| r.get(0)).unwrap_or(0);
@@ -958,7 +989,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
     let total_dropped: i64 = conn.query_row("SELECT COUNT(*) FROM user_titles WHERE status = 'dropped'", [], |r| r.get(0)).unwrap_or(0);
     let total_minutes: i64 = conn.query_row("SELECT total_watch_minutes FROM user_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or(0);
 
-    // Эпизоды: отмеченные сериалы + anime_episodes_watched
     let tv_episodes: i64 = conn.query_row(
         "SELECT COUNT(*) FROM user_episodes ue
          JOIN episodes e ON e.id = ue.episode_id
@@ -986,15 +1016,8 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         total_minutes, total_episodes, total_rewatches, average_rating, rated_count,
     };
 
-    // ---------- GENRES ----------
-    // Жанры не хранятся в БД отдельной таблицей. Используем keyword_ids/company? Нет.
-    // У нас в titles нет genre_ids. Есть только overview. Поэтому жанры достанем из titles.overview? Нет.
-    // Проще: пропускаем жанры на первом этапе ИЛИ считаем по keyword? Нет.
-    // Вариант: считать по type + year, а жанры убрать. Либо добавить в title_metadata поле genre_ids.
-    // Пока genres = пустой массив (можно расширить позже).
     let genres: Vec<StatsGenre> = vec![];
 
-    // ---------- YEARS ----------
     let mut stmt = conn.prepare(
         "SELECT t.year, COUNT(*) FROM titles t
          JOIN user_titles ut ON ut.title_id = t.id
@@ -1007,7 +1030,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // ---------- DECADES ----------
     let mut stmt = conn.prepare(
         "SELECT (t.year / 10) * 10 AS decade, COUNT(*) FROM titles t
          JOIN user_titles ut ON ut.title_id = t.id
@@ -1020,7 +1042,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         Ok(StatsDecade { decade: format!("{}s", d), count: r.get(1)? })
     }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
-    // ---------- RATINGS ----------
     let mut stmt = conn.prepare(
         "SELECT CAST(rating AS INTEGER) AS r, COUNT(*) FROM user_titles
          WHERE rating IS NOT NULL
@@ -1036,7 +1057,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         count: *rating_map.get(&i).unwrap_or(&0),
     }).collect();
 
-    // ---------- MONTHLY ----------
     let mut stmt = conn.prepare(
         "SELECT strftime('%Y-%m', watched_at) AS m, COUNT(*) FROM watch_entries
          WHERE watched_at IS NOT NULL
@@ -1045,7 +1065,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
     let monthly: Vec<StatsMonthly> = stmt.query_map([], |r| Ok(StatsMonthly { month: r.get(0)?, count: r.get(1)? }))
         .map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
-    // ---------- TOP RATED ----------
     let mut stmt = conn.prepare(
         "SELECT t.title, t.poster_path, t.type, t.tmdb_id, ut.rating,
                 (SELECT COUNT(*) FROM watch_entries we WHERE we.user_title_id = ut.id AND we.is_rewatch = 1) AS rw
@@ -1058,7 +1077,11 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         let poster_path: Option<String> = r.get(1)?;
         Ok(StatsTopTitle {
             title: r.get(0)?,
-            poster_url: poster_path.map(|p| if p.starts_with("http") { p } else { format!("https://image.tmdb.org/t/p/w200{}", p) }),
+            poster_url: poster_path.and_then(|p| {
+                if p.starts_with("data:") { None }
+                else if p.starts_with("http") { Some(p) }
+                else { Some(format!("https://image.tmdb.org/t/p/w200{}", p)) }
+            }),
             type_field: r.get(2)?,
             tmdb_id: r.get(3)?,
             rating: r.get(4)?,
@@ -1066,7 +1089,6 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         })
     }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
 
-    // ---------- MOST REWATCHED ----------
     let mut stmt = conn.prepare(
         "SELECT t.title, t.poster_path, t.type, t.tmdb_id, ut.rating,
                 COUNT(*) AS rw
@@ -1082,15 +1104,18 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
         let poster_path: Option<String> = r.get(1)?;
         Ok(StatsTopTitle {
             title: r.get(0)?,
-            poster_url: poster_path.map(|p| if p.starts_with("http") { p } else { format!("https://image.tmdb.org/t/p/w200{}", p) }),
+            poster_url: poster_path.and_then(|p| {
+                if p.starts_with("data:") { None }
+                else if p.starts_with("http") { Some(p) }
+                else { Some(format!("https://image.tmdb.org/t/p/w200{}", p)) }
+            }),
             type_field: r.get(2)?,
             tmdb_id: r.get(3)?,
             rating: r.get(4)?,
             rewatch_count: r.get(5)?,
         })
     }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
-    // ---------- WEEKDAYS ----------
-    // strftime('%w') → 0=Sunday, 1=Monday, ..., 6=Saturday
+
     let mut stmt = conn.prepare(
         "SELECT strftime('%w', watched_at) AS w, COUNT(*) FROM watch_entries
          WHERE watched_at IS NOT NULL
@@ -1099,6 +1124,87 @@ pub fn get_stats(db: State<'_, Arc<Database>>) -> Result<crate::models::StatsFul
     let weekdays: Vec<StatsWeekday> = stmt.query_map([], |r| {
         Ok(StatsWeekday { weekday: r.get(0)?, count: r.get(1)? })
     }).map_err(|e| e.to_string())?.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
-	
+
     Ok(StatsFull { overview, genres, years, decades, ratings, monthly, weekdays, top_rated, most_rewatched })
+}
+
+// ==========================================
+// КЭШ ОБЛОЖЕК
+// ==========================================
+
+#[tauri::command]
+pub async fn cache_cover(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    url: String,
+) -> Result<String, String> {
+    use tauri::Manager;
+    use base64::{Engine as _, engine::general_purpose};
+
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+
+    // Protocol-relative URL
+    let url = if url.starts_with("//") {
+        format!("https:{}", url)
+    } else {
+        url
+    };
+
+    let referer = if url.contains("lain.bgm.tv") || url.contains("bgm.tv") {
+        "https://bgm.tv/"
+    } else if url.contains("shikimori") {
+        "https://shikimori.one/"
+    } else if url.contains("anilist") {
+        "https://anilist.co/"
+    } else if url.contains("tmdb.org") {
+        "https://www.themoviedb.org/"
+    } else {
+        ""
+    };
+
+    // 1. Проверяем кэш
+    let cached_path = {
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        crate::cover_cache::get_cached(&conn, &url)
+    };
+
+    let file_path = if let Some(path) = cached_path {
+        path
+    } else {
+        // 2. Качаем, если нет в кэше
+        let bytes = crate::cover_cache::download_bytes(&url, referer).await?;
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        crate::cover_cache::save_to_cache(&app_dir, &conn, &url, bytes)?
+    };
+
+    // 3. Читаем файл, определяем MIME по реальному содержимому
+    let bytes = std::fs::read(&file_path).map_err(|e| e.to_string())?;
+    let b64 = general_purpose::STANDARD.encode(&bytes);
+
+    let mime = if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        "image/jpeg"
+    } else if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        "image/png"
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        "image/webp"
+    } else if bytes.starts_with(&[0x47, 0x49, 0x46, 0x38]) {
+        "image/gif"
+    } else {
+        // не должны сюда попасть — save_to_cache уже провалидировал
+        return Err(format!("Unknown image format in cache: {}", file_path));
+    };
+
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+#[tauri::command]
+pub fn cleanup_cover_cache(
+    app: tauri::AppHandle,
+    db: State<'_, Arc<Database>>,
+    force: bool,
+) -> Result<usize, String> {
+    use tauri::Manager;
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    crate::cover_cache::cleanup(&conn, &app_dir, force)
 }

@@ -6,6 +6,7 @@
   import { ArrowLeft, Star, Clock, ExternalLink, Film, ChevronDown, ChevronRight, Check, FolderPlus, Pencil, X, Repeat } from 'lucide-svelte';
   import { settings } from '$lib/settings.svelte';
   import { goto } from '$app/navigation';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   type CastMember = { name: string; character: string | null; profile_url: string | null; };
 
@@ -75,6 +76,10 @@
   const currentRating = $derived(userData?.rating ?? 0);
   const displayRating = $derived(hoveredStar > 0 ? hoveredStar : currentRating);
   const rewatchCount = $derived(userData?.rewatch_count ?? 0);
+
+  function imgError(e: Event) {
+    (e.currentTarget as HTMLImageElement).style.display = 'none';
+  }
 
   async function load() {
     try {
@@ -270,21 +275,40 @@
   </button>
 
   {#if loading}
-    <div class="text-center text-zinc-500 py-20">{$t('title_page.loading')}</div>
+    <div class="flex flex-col items-center justify-center py-20 gap-4">
+      <Spinner size={48} />
+      <p class="text-zinc-500">{$t('title_page.loading')}</p>
+    </div>
   {:else if error}
     <div class="p-4 rounded-lg bg-red-950/50 border border-red-800 text-sm text-red-200"><pre class="whitespace-pre-wrap">{error}</pre></div>
   {:else if details}
     <div class="relative rounded-2xl overflow-hidden mb-6 md:mb-8">
       {#if details.backdrop_url}
         <div class="absolute inset-0 hidden md:block">
-          <img src={details.backdrop_url} alt="" class="w-full h-full object-cover" />
+          <img
+            src={details.backdrop_url}
+            alt=""
+            loading="eager"
+            decoding="sync"
+            referrerpolicy="no-referrer"
+            onerror={imgError}
+            class="w-full h-full object-cover"
+          />
           <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/40"></div>
         </div>
       {/if}
 
       <div class="relative flex flex-col md:flex-row gap-4 md:gap-8 p-4 md:p-8">
         {#if details.poster_url}
-          <img src={details.poster_url} alt={details.title} class="w-full md:w-56 h-48 md:h-84 object-cover rounded-xl shadow-2xl shrink-0" />
+          <img
+            src={details.poster_url}
+            alt={details.title}
+            loading="eager"
+            decoding="sync"
+            referrerpolicy="no-referrer"
+            onerror={imgError}
+            class="w-full md:w-56 h-48 md:h-84 object-cover rounded-xl shadow-2xl shrink-0"
+          />
         {:else}
           <div class="w-full md:w-56 h-48 md:h-84 bg-ink-light rounded-xl flex items-center justify-center text-zinc-600 shrink-0"><Film size={48} /></div>
         {/if}
@@ -490,7 +514,10 @@
               {#if isOpen}
                 <div class="border-t border-border">
                   {#if loadingEpisodes === season.season_number}
-                    <div class="p-4 text-center text-zinc-500 text-sm">{$t('common.loading')}</div>
+                    <div class="p-4 flex items-center justify-center gap-2 text-zinc-500 text-sm">
+                      <Spinner size={16} />
+                      {$t('common.loading')}
+                    </div>
                   {:else if seasonEpisodes[season.season_number]?.length > 0}
                     <div class="divide-y divide-border">
                       {#each seasonEpisodes[season.season_number] as ep}
@@ -533,7 +560,17 @@
           {#each details.cast as member}
             <div class="rounded-xl bg-surface border border-border overflow-hidden">
               {#if member.profile_url}
-                <div class="aspect-[2/3] overflow-hidden bg-ink-light"><img src={member.profile_url} alt={member.name} loading="lazy" decoding="async" class="w-full h-full object-cover" /></div>
+                <div class="aspect-[2/3] overflow-hidden bg-ink-light">
+                  <img
+                    src={member.profile_url}
+                    alt={member.name}
+                    loading="eager"
+                    decoding="sync"
+                    referrerpolicy="no-referrer"
+                    onerror={imgError}
+                    class="w-full h-full object-cover"
+                  />
+                </div>
               {:else}
                 <div class="aspect-[2/3] bg-ink-light flex items-center justify-center text-zinc-600"><Film size={24} /></div>
               {/if}

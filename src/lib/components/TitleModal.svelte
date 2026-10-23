@@ -14,7 +14,7 @@
     rating: number | null;
     media_type: string;
   };
-  
+
   type Achievement = {
     id: number;
     code: string;
@@ -46,13 +46,50 @@
     if (e.target === e.currentTarget) onClose();
   }
 
+  function imgError(e: Event) {
+    const img = e.currentTarget as HTMLImageElement;
+    img.style.opacity = '0';
+  }
+
+  function displayPoster(): string | null {
+    if (!item.poster_url) return null;
+    if (item.poster_url.startsWith('data:')) return item.poster_url;
+    return item.poster_url.replace('/w500/', '/w342/');
+  }
+
+  // ГЛАВНОЕ: получаем путь к постеру для сохранения в базу
+  async function getPosterPathForDb(): Promise<string | null> {
+    // Если poster_url — нормальная ссылка (не data:), берём из неё
+    if (item.poster_url && !item.poster_url.startsWith('data:')) {
+      if (item.poster_url.startsWith('https://image.tmdb.org/t/p/w500')) {
+        return item.poster_url.replace('https://image.tmdb.org/t/p/w500', '');
+      }
+      return item.poster_url;
+    }
+
+    // Иначе идём в TMDB и спрашиваем заново
+    try {
+      const details = await invoke<any>('get_title_details', {
+        tmdbId: item.tmdb_id,
+        mediaType: item.media_type === 'tv' ? 'tv' : 'movie',
+        apiKey: settings.tmdbKey || null,
+        locale: $locale,
+      });
+      if (details.poster_url) {
+        return details.poster_url.replace('https://image.tmdb.org/t/p/w500', '');
+      }
+    } catch (e) {
+      console.error('Failed to fetch poster:', e);
+    }
+    return null;
+  }
+
   async function saveToLibrary(status: string) {
     saving = true;
     error = '';
     try {
-      const posterPath = item.poster_url
-        ? item.poster_url.replace('https://image.tmdb.org/t/p/w500', '')
-        : null;
+      // Сохраняем путь к постеру
+      const posterPath = await getPosterPathForDb();
 
       let runtime: number | null = null;
       let cast_ids: number[] = [];
@@ -142,6 +179,8 @@
       saving = false;
     }
   }
+
+  const poster = $derived(displayPoster());
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onClose()} />
@@ -153,8 +192,15 @@
     </button>
 
     <div class="flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6">
-      {#if item.poster_url}
-        <img src={item.poster_url.replace('/w500/', '/w342/')} alt={item.title} loading="eager" decoding="async" fetchpriority="high" class="w-full md:w-48 h-48 md:h-72 object-cover rounded-lg shrink-0" />
+      {#if poster}
+        <img
+          src={poster}
+          alt={item.title}
+          decoding="sync"
+          referrerpolicy="no-referrer"
+          onerror={imgError}
+          class="w-full md:w-48 h-48 md:h-72 object-cover rounded-lg shrink-0"
+        />
       {:else}
         <div class="w-full md:w-48 h-48 md:h-72 bg-ink-light rounded-lg shrink-0 flex items-center justify-center text-zinc-600 text-xs">{$t('search.no_poster')}</div>
       {/if}

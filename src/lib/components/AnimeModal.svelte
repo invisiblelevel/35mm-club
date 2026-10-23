@@ -9,6 +9,7 @@
     title_original: string | null;
     description: string | null;
     cover_url: string | null;
+    original_cover_url?: string | null;
     episodes: number | null;
     average_score: number | null;
     format: string | null;
@@ -68,16 +69,24 @@
       .trim();
   }
 
+  function imgError(e: Event) {
+    const img = e.currentTarget as HTMLImageElement;
+    img.style.opacity = '0';
+  }
+
   async function saveToLibrary(status: string) {
     saving = true;
     error = '';
     try {
+      // Для БД берём ОРИГИНАЛЬНЫЙ URL, а не data URL
+      const coverForDb = item.original_cover_url || item.cover_url;
+
       const newAchievements = await invoke<any[]>('add_anime_to_library', {
         payload: {
           mal_id: item.mal_id,
           title: item.title,
           description: description,
-          cover_url: item.cover_url,
+          cover_url: coverForDb,
           episodes: item.episodes,
           format: item.format,
           status,
@@ -113,7 +122,15 @@
 
     <div class="flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6">
       {#if item.cover_url}
-        <img src={item.cover_url} alt={item.title} loading="eager" decoding="async" fetchpriority="high" class="w-full md:w-48 h-48 md:h-72 object-cover rounded-lg shrink-0" />
+        <img
+          src={item.cover_url}
+          alt={item.title}
+          loading="eager"
+          decoding="sync"
+          referrerpolicy="no-referrer"
+          onerror={imgError}
+          class="w-full md:w-48 h-48 md:h-72 object-cover rounded-lg shrink-0"
+        />
       {:else}
         <div class="w-full md:w-48 h-48 md:h-72 bg-ink-light rounded-lg shrink-0 flex items-center justify-center text-zinc-600 text-xs">{$t('search.no_poster')}</div>
       {/if}

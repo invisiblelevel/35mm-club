@@ -1,11 +1,12 @@
 <script lang="ts">
   import { t, locale } from 'svelte-i18n';
-  import { Clapperboard, Search } from 'lucide-svelte';
+  import { Clapperboard } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   type LibraryItem = {
     id: number; tmdb_id: number | null; title: string; type_field: string;
@@ -17,11 +18,52 @@
   let loading = $state(true);
   let currentPage = $state(1);
   const pageSize = 50;
+  const TMDB_IMG = 'https://image.tmdb.org/t/p/w200';
+
+  async function cacheCover(url: string | null): Promise<string | null> {
+    if (!url) return null;
+    if (!url.startsWith('http')) return url;
+    try {
+      return await invoke<string>('cache_cover', { url });
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function imgFallback(e: Event) {
+    const img = e.currentTarget as HTMLImageElement;
+    const orig = img.dataset.orig;
+    if (orig && img.src !== orig) {
+      img.src = orig;
+      delete img.dataset.orig;
+      return;
+    }
+    img.style.opacity = '0';
+  }
+
+  function imgLoaded(e: Event) {
+    (e.currentTarget as HTMLImageElement).style.opacity = '1';
+  }
 
   async function loadItems() {
     try {
-      items = await invoke<LibraryItem[]>('get_library', { contentType: 'anime' });
-    } catch (e) { console.error(e); } finally { loading = false; }
+      const raw = await invoke<LibraryItem[]>('get_library', { contentType: 'anime' });
+      items = raw;
+      loading = false;
+
+      raw.forEach(async (item) => {
+        if (!item.poster_path) return;
+        if (item.poster_path.startsWith('data:')) return;
+        const fullUrl = item.poster_path.startsWith('http') ? item.poster_path : TMDB_IMG + item.poster_path;
+        const cached = await cacheCover(fullUrl);
+        if (cached && cached !== item.poster_path) {
+          items = items.map(it => it.id === item.id ? { ...it, poster_path: cached } : it);
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      loading = false;
+    }
   }
 
   onMount(loadItems);
@@ -36,16 +78,24 @@
   const totalPages = $derived(Math.max(1, Math.ceil(items.length / pageSize)));
   const paginatedItems = $derived(items.slice((currentPage - 1) * pageSize, currentPage * pageSize));
 
-  function imgFallback(e: Event) {
-    const img = e.currentTarget as HTMLImageElement;
-    img.style.display = 'none';
+  function posterSrc(item: LibraryItem): string | null {
+    if (!item.poster_path) return null;
+    if (item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) return item.poster_path;
+    return TMDB_IMG + item.poster_path;
+  }
+
+  function originalSrc(item: LibraryItem): string | null {
+    if (!item.poster_path) return null;
+    if (item.poster_path.startsWith('data:')) return null;
+    if (item.poster_path.startsWith('http')) return item.poster_path;
+    return TMDB_IMG + item.poster_path;
   }
 </script>
 
 <PageHeader title={$t('library.anime_title')} subtitle={$t('library.anime_subtitle')} icon={Clapperboard} actionLabel="Найти аниме" actionHref="/search" />
 
 {#if loading}
-  <div class="text-center text-zinc-500 py-12">{$t('common.loading')}</div>
+  <div class="flex items-center justify-center py-20"><Spinner size={40} /></div>
 {:else if items.length === 0}
   <EmptyState
     icon={Clapperboard}
@@ -56,13 +106,14 @@
   />
 {:else}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-    {#each paginatedItems as item, i (item.id)}
+    {#each paginatedItems as item (item.id)}
+      {@const src = posterSrc(item)}
+      {@const orig = originalSrc(item)}
       <a href={`/anime/${item.tmdb_id}`} class="block rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300">
-        <div class="aspect-[2/3] bg-ink-light overflow-hidden">
-          {#if item.poster_path}
-            <img src={item.poster_path} alt={item.title} loading={i < 6 ? 'eager' : 'lazy'} decoding="async" fetchpriority={i < 6 ? 'high' : 'low'} onerror={imgFallback} class="w-full h-full object-cover" />
-          {:else}
-            <div class="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Нет постера</div>
+        <div class="aspect-[2/3] bg-ink-light overflow-hidden relative">
+          <div class="absolute inset-0 flex items-center justify-center text-zinc-600 pointer-events-none"><Clapperboard size={48} /></div>
+          {#if src}
+            <img src={src} data-orig={orig ?? ''} alt={item.title} loading="eager" decoding="sync" referrerpolicy="no-referrer" onerror={imgFallback} onload={imgLoaded} class="absolute inset-0 w-full h-full object-cover z-10" />
           {/if}
         </div>
         <div class="p-2 md:p-3">
