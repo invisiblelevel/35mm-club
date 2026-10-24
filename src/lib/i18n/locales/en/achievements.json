@@ -472,6 +472,11 @@
     "anime_domestic_girlfriend": { "title": "Santa Barbara, Japanese Style", "desc": "Japanese Santa Barbara. Inches of Spanish shame, cheating, tears and the best opening in history (Crying for Rain)." },
     "anime_shinmai_maou": { "title": "Hentai That Slipped onto TV", "desc": "It's literally hentai that accidentally slipped onto regular television disguised as a fantasy action. The physics of boobs reached the intergalactic level." },
 	
+	"anime_paprika": {
+    "title": "Sleep of Reason",
+    "desc": "Watch \"Paprika\" and realize that the sleep of reason produces not only monsters, but also red pepper shakers."
+},
+	
 	"rewatch_first": { "title": "Rewatcher", "desc": "Log your first rewatch." },
     "rewatch_5_same": { "title": "Movie Masochist", "desc": "Rewatch one title 5 times." },
     "rewatch_10_same": { "title": "Eternal Loop", "desc": "Rewatch one title 10 times." },

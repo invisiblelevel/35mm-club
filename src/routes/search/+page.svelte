@@ -251,7 +251,7 @@
       </h2>
       {#if animeResults.length > 0}
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-          {#each animeResults as item (item.mal_id)}
+          {#each animeResults as item, i (item.mal_id + '-' + i)}
             <button type="button" onclick={() => selectedAnime = item} class="group text-left rounded-xl bg-surface border border-border overflow-hidden hover:border-gold/50 transition-all duration-300 cursor-pointer">
               <div class="aspect-[2/3] bg-ink-light overflow-hidden relative">
                 <div class="absolute inset-0 flex items-center justify-center text-zinc-600 pointer-events-none"><Film size={48} /></div>

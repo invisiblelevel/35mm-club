@@ -473,6 +473,11 @@
     "anime_domestic_girlfriend": { "title": "日式圣塔芭芭拉", "desc": "几英寸的西班牙羞耻、出轨、眼泪和史上最好的片头曲（Crying for Rain）。" },
     "anime_testament_sister": { "title": "溜进电视的Hentai", "desc": "这简直是Hentai不小心伪装成奇幻动作片溜进了普通电视。" },
 	
+	"anime_paprika": {
+    "title": "理性之眠",
+    "desc": "观看《红辣椒》，并意识到理性的沉睡不仅会产生怪物，还会产生红辣椒。"
+},
+	
 	"rewatch_first": { "title": "重看者", "desc": "记录第一次重看。" },
     "rewatch_5_same": { "title": "电影受虐狂", "desc": "重看同一部作品5次。" },
     "rewatch_10_same": { "title": "永恒循环", "desc": "重看同一部作品10次。" },

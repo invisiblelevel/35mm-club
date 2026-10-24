@@ -404,23 +404,29 @@ async fn search_anime_bangumi(query: String) -> Result<Vec<crate::shikimori::Shi
     }
 
     let mut mapped = Vec::new();
-    for (item, mal_id_opt) in items.into_iter().zip(mal_ids.into_iter()) {
-        if let Some(mal_id) = mal_id_opt {
-            mapped.push(crate::shikimori::ShikiSearchItem {
-                mal_id,
-                title: item.title,
-                title_original: item.title_original,
-                description: item.description,
-                cover_url: item.cover_url,
-                episodes: item.episodes,
-                average_score: item.average_score.map(|s| s / 10.0),
-                format: item.format,
-                year: item.year,
-            });
-        }
-    }
+let mut seen = std::collections::HashSet::new();
 
-    Ok(mapped)
+for (item, mal_id_opt) in items.into_iter().zip(mal_ids.into_iter()) {
+    if let Some(mal_id) = mal_id_opt {
+        // Пропускаем дубликаты по mal_id
+        if !seen.insert(mal_id) {
+            continue;
+        }
+        mapped.push(crate::shikimori::ShikiSearchItem {
+            mal_id,
+            title: item.title,
+            title_original: item.title_original,
+            description: item.description,
+            cover_url: item.cover_url,
+            episodes: item.episodes,
+            average_score: item.average_score.map(|s| s / 10.0),
+            format: item.format,
+            year: item.year,
+        });
+    }
+}
+
+Ok(mapped)
 }
 
 #[tauri::command]
