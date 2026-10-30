@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "35mm Club",
+  "productName": "thirty_five_mm_club",
   "version": "1.3.0",
   "identifier": "com.invisiblelevel.thirtyfivemmclub",
   "build": {
