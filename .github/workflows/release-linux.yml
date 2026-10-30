@@ -1,0 +1,72 @@
+name: Build Linux
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Tauri app (Linux)
+        run: npm run tauri build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}  # <-- КЛЮЧ ПОДСТАВЛЯЕТСЯ ЗДЕСЬ
+
+      - name: Create Draft Release and Upload Linux Artifacts
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: '35mm Club ${{ github.ref_name }}'
+          releaseBody: |
+            **35mm Club ${{ github.ref_name }}**
+
+            - Roulette wheel for picking what to watch.
+            - Secure API keys (loaded from `.env` at build time).
+            - Bangumi support for Chinese locale.
+
+            **Downloads:**
+            - Windows: `.exe` (NSIS installer) — *attach manually*
+            - Android: `.apk` (Universal) — *attach manually*
+            - Linux: `.deb`, `.rpm`, `.AppImage` — *auto-built*
+          releaseDraft: true
+          prerelease: false

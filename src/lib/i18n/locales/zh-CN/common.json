@@ -4,6 +4,7 @@
     "tagline": "你的影院。你的规则。"
   },
   "nav": {
+	"roulette": "轮盘",
 	"stats": "统计",
     "dashboard": "仪表盘",
     "movies": "电影",
@@ -318,5 +319,11 @@
     "progress": "观看进度",
     "fully_watched": "已全部看完！",
     "your_notes": "你的备注"
+  },
+    "zh_vpn_warning": {
+    "title": "网络提示",
+    "body": "您已切换到中文。电影和剧集搜索（TMDB）以及动漫搜索（Bangumi）在中国大陆可能无法使用，这两个服务均被屏蔽。",
+    "hint": "已保存的数据和媒体库无需 VPN 即可使用。如需搜索新内容，请启用 VPN 或代理。",
+    "button": "知道了"
   }
 }

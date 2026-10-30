@@ -19,12 +19,13 @@
   import {
     Film, Tv, Clapperboard, BookOpen, FolderHeart,
     Trophy, User, Settings, Search, Info, Loader2, Menu, X, Wifi,
-    BarChart3
+    BarChart3, Dices
   } from 'lucide-svelte';
 
   import AboutModal from '$lib/components/AboutModal.svelte';
   import SupportModal from '$lib/components/SupportModal.svelte';
   import AchievementToast, { type ToastData } from '$lib/components/AchievementToast.svelte';
+  import ZhVpnWarning from '$lib/components/ZhVpnWarning.svelte';
 
   let showAbout = $state(false);
   let showSupport = $state(false);
@@ -32,8 +33,8 @@
   let toastQueue: ToastData[] = $state([]);
   let translating = $state(false);
   let sidebarOpen = $state(false);
+  let showZhVpnWarning = $state(false);
 
-  // sync toast
   type SyncToast = {
     kind: 'done' | 'pairing';
     peer_name?: string;
@@ -51,8 +52,18 @@
     syncToastTimer = setTimeout(() => { syncToast = null; }, 5000);
   }
 
+  function checkZhVpnWarning(loc: string) {
+    if (loc !== 'zh-CN') return;
+    if (localStorage.getItem('35mm-zh-vpn-warned') === '1') return;
+    showZhVpnWarning = true;
+  }
+
   onMount(() => {
     settings.init();
+
+    const initLocale = localStorage.getItem('35mm-locale')
+      || (navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : '');
+    checkZhVpnWarning(initLocale);
 
     const handleToast = (e: Event) => {
       const customEvent = e as CustomEvent<ToastData>;
@@ -107,6 +118,16 @@
     sidebarOpen = false;
   });
 
+  $effect(() => {
+    const loc = $locale;
+    if (!loc) return;
+    if (loc === 'zh-CN') {
+      checkZhVpnWarning(loc);
+    } else if (showZhVpnWarning) {
+      showZhVpnWarning = false;
+    }
+  });
+
   const navItems = [
     { href: '/profile', key: 'nav.profile', icon: User },
     { href: '/library/movies', key: 'nav.movies', icon: Film },
@@ -115,6 +136,7 @@
     { href: '/diary', key: 'nav.diary', icon: BookOpen },
     { href: '/collections', key: 'nav.collections', icon: FolderHeart },
     { href: '/achievements', key: 'nav.achievements', icon: Trophy },
+    { href: '/roulette', key: 'nav.roulette', icon: Dices },
     { href: '/stats', key: 'nav.stats', icon: BarChart3 },
   ];
 
@@ -292,5 +314,9 @@
         </div>
       </div>
     </div>
+  {/if}
+
+  {#if showZhVpnWarning}
+    <ZhVpnWarning onClose={() => showZhVpnWarning = false} />
   {/if}
 {/await}

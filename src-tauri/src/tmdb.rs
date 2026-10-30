@@ -1,8 +1,29 @@
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_TMDB_KEY: &str = "c7cf9c4e09dc02c786f8fb5669c44a01";
 const TMDB_BASE: &str = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE: &str = "https://image.tmdb.org/t/p/w500";
+
+/// Встроенный ключ приложения.
+///
+/// Читается на этапе компиляции из переменной окружения `TMDB_API_KEY`,
+/// которую `build.rs` подхватывает из `.env` в корне проекта.
+/// `.env` в `.gitignore` — в репозиторий ключ не попадает.
+///
+/// Fallback на `std::env::var` — для случаев, когда ключ передан
+/// в окружение явно (CI, `set TMDB_API_KEY=... && cargo build`).
+fn default_tmdb_key() -> String {
+    if let Some(k) = option_env!("TMDB_API_KEY") {
+        if !k.trim().is_empty() {
+            return k.trim().to_string();
+        }
+    }
+    if let Ok(k) = std::env::var("TMDB_API_KEY") {
+        if !k.trim().is_empty() {
+            return k.trim().to_string();
+        }
+    }
+    String::new()
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TmdbSearchResult {
@@ -172,10 +193,38 @@ struct TmdbVideos { results: Option<Vec<TmdbVideo>> }
 #[derive(Debug, Deserialize)]
 struct TmdbVideo { key: String, site: String, #[serde(rename = "type")] video_type: String }
 
+// ==========================================
+// Discover (для рулетки)
+// ==========================================
+
+#[derive(Debug, Deserialize)]
+struct TmdbDiscoverResponse {
+    page: i64,
+    total_pages: i64,
+    results: Vec<TmdbSearchResult>,
+}
+
+/// Результат «рулетки» — универсальная структура для фильмов и сериалов.
+/// Для аниме используется своя (в roulette.rs), но поля совпадают.
+#[derive(Debug, Serialize, Clone)]
+pub struct DiscoverItem {
+    pub tmdb_id: i64,
+    pub title: String,
+    pub original_title: Option<String>,
+    pub overview: Option<String>,
+    pub poster_url: Option<String>,
+    pub year: Option<i64>,
+    pub rating: Option<f64>,
+    pub media_type: String,
+    pub runtime: Option<i64>,
+    pub episodes: Option<i64>,
+    pub genres: Vec<String>,
+}
+
 fn resolve_api_key(user_key: Option<String>) -> String {
     match user_key {
         Some(k) if !k.trim().is_empty() => k.trim().to_string(),
-        _ => DEFAULT_TMDB_KEY.to_string(),
+        _ => default_tmdb_key(),
     }
 }
 
@@ -189,7 +238,7 @@ fn resolve_tmdb_language(locale: &str) -> &'static str {
 
 pub async fn search_movies(query: &str, media_type: &str, user_api_key: Option<String>, locale: &str) -> Result<Vec<MovieSearchItem>, String> {
     let api_key = resolve_api_key(user_api_key);
-    if api_key == "ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА" { return Err("TMDB key not set".to_string()); }
+    if api_key.is_empty() { return Err("TMDB key not set".to_string()); }
 
     let endpoint = match media_type { "movie" => "search/movie", "tv" => "search/tv", _ => "search/multi" };
     let url = format!("{}/{}", TMDB_BASE, endpoint);
@@ -223,7 +272,7 @@ pub async fn search_movies(query: &str, media_type: &str, user_api_key: Option<S
 
 pub async fn get_title_details(tmdb_id: i64, media_type: &str, user_api_key: Option<String>, locale: &str) -> Result<TitleDetails, String> {
     let api_key = resolve_api_key(user_api_key);
-    if api_key == "ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА" { return Err("TMDB key not set".to_string()); }
+    if api_key.is_empty() { return Err("TMDB key not set".to_string()); }
 
     let endpoint = match media_type { "tv" => format!("tv/{}", tmdb_id), _ => format!("movie/{}", tmdb_id) };
     let url = format!("{}/{}", TMDB_BASE, endpoint);
@@ -326,7 +375,7 @@ pub async fn get_title_details(tmdb_id: i64, media_type: &str, user_api_key: Opt
 
 pub async fn get_tv_seasons(tmdb_id: i64, user_api_key: Option<String>, locale: &str) -> Result<Vec<TvSeason>, String> {
     let api_key = resolve_api_key(user_api_key);
-    if api_key == "ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА" { return Err("TMDB key not set".to_string()); }
+    if api_key.is_empty() { return Err("TMDB key not set".to_string()); }
 
     let url = format!("{}/tv/{}", TMDB_BASE, tmdb_id);
     let lang = resolve_tmdb_language(locale);
@@ -355,7 +404,7 @@ pub async fn get_tv_seasons(tmdb_id: i64, user_api_key: Option<String>, locale: 
 
 pub async fn get_season_details(tmdb_id: i64, season_number: i64, user_api_key: Option<String>, locale: &str) -> Result<Vec<TvEpisode>, String> {
     let api_key = resolve_api_key(user_api_key);
-    if api_key == "ВСТАВЬ_СВОЙ_КЛЮЧ_СЮДА" { return Err("TMDB key not set".to_string()); }
+    if api_key.is_empty() { return Err("TMDB key not set".to_string()); }
 
     let url = format!("{}/tv/{}/season/{}", TMDB_BASE, tmdb_id, season_number);
     let lang = resolve_tmdb_language(locale);
@@ -381,4 +430,141 @@ pub async fn get_season_details(tmdb_id: i64, season_number: i64, user_api_key: 
     }).collect();
 
     Ok(episodes)
+}
+
+// ==========================================
+// DISCOVER RANDOM (для рулетки)
+// ==========================================
+
+/// Берёт случайный фильм или сериал с TMDB.
+///
+/// Логика:
+/// 1. Случайная страница в диапазоне 1..=max_page (по popularity.desc).
+/// 2. Из результатов берём случайный.
+/// 3. Дозапрашиваем детали (runtime, episodes) для карточки.
+///
+/// Это даёт «честный рандом» из популярного пула — не топ-100,
+/// но и не мусор с 1 голосом.
+pub async fn discover_random(
+    media_type: &str,
+    user_api_key: Option<String>,
+    locale: &str,
+) -> Result<DiscoverItem, String> {
+    let api_key = resolve_api_key(user_api_key);
+    if api_key.is_empty() { return Err("TMDB key not set".to_string()); }
+
+    let endpoint = match media_type {
+        "tv" => "discover/tv",
+        _ => "discover/movie",
+    };
+    let url = format!("{}/{}", TMDB_BASE, endpoint);
+    let lang = resolve_tmdb_language(locale);
+
+    let client = reqwest::Client::new();
+
+    // 1. Первый запрос — узнаём total_pages и берём случайную страницу
+    //    (сразу страницу 1, чтобы не делать 2 запроса)
+    let first_resp = client.get(&url)
+        .query(&[
+            ("api_key", api_key.as_str()),
+            ("language", lang),
+            ("sort_by", "popularity.desc"),
+            ("include_adult", "false"),
+            ("page", "1"),
+        ])
+        .send().await.map_err(|e| e.to_string())?;
+
+    if !first_resp.status().is_success() {
+        return Err(format!("TMDB error: {}", first_resp.status()));
+    }
+
+    let first: TmdbDiscoverResponse = first_resp.json().await.map_err(|e| e.to_string())?;
+
+    // TMDB реально отдаёт максимум 500 страниц, даже если total_pages больше
+    let total_pages = first.total_pages.min(500).max(1);
+    let random_page = (rand::random::<u32>() % total_pages as u32) + 1;
+
+    // 2. Если random_page == 1 — используем уже полученный ответ,
+    //    иначе делаем второй запрос
+    let discover: TmdbDiscoverResponse = if random_page == 1 {
+        first
+    } else {
+        let resp = client.get(&url)
+            .query(&[
+                ("api_key", api_key.as_str()),
+                ("language", lang),
+                ("sort_by", "popularity.desc"),
+                ("include_adult", "false"),
+                ("page", &random_page.to_string()),
+            ])
+            .send().await.map_err(|e| e.to_string())?;
+
+        if !resp.status().is_success() {
+            return Err(format!("TMDB error: {}", resp.status()));
+        }
+        resp.json().await.map_err(|e| e.to_string())?
+    };
+
+    if discover.results.is_empty() {
+        return Err("TMDB вернул пустой список".to_string());
+    }
+
+    // 3. Случайный из результатов
+    let idx = (rand::random::<u32>() as usize) % discover.results.len();
+    let r = &discover.results[idx];
+
+    let title = r.title.clone()
+        .or(r.name.clone())
+        .or(r.original_title.clone())
+        .or(r.original_name.clone())
+        .unwrap_or_else(|| "Unknown".to_string());
+    let original_title = r.original_title.clone().or(r.original_name.clone());
+    let date = r.release_date.clone().or(r.first_air_date.clone());
+    let year = date.as_ref().and_then(|d| d.split('-').next()).and_then(|y| y.parse::<i64>().ok());
+    let poster_url = r.poster_path.clone().map(|p| format!("{}{}", TMDB_IMAGE_BASE, p));
+
+    // 4. Дозапрашиваем детали (runtime для фильма, episodes для сериала)
+    let mut runtime: Option<i64> = None;
+    let mut episodes: Option<i64> = None;
+    let mut genres: Vec<String> = Vec::new();
+
+    let details_endpoint = match media_type {
+        "tv" => format!("tv/{}", r.id),
+        _ => format!("movie/{}", r.id),
+    };
+    let details_url = format!("{}/{}", TMDB_BASE, details_endpoint);
+
+    if let Ok(det_resp) = client.get(&details_url)
+        .query(&[("api_key", api_key.as_str()), ("language", lang)])
+        .send().await
+    {
+        if det_resp.status().is_success() {
+            if let Ok(det) = det_resp.json::<serde_json::Value>().await {
+                if media_type == "tv" {
+                    episodes = det.get("number_of_episodes").and_then(|v| v.as_i64());
+                } else {
+                    runtime = det.get("runtime").and_then(|v| v.as_i64());
+                }
+                if let Some(gs) = det.get("genres").and_then(|v| v.as_array()) {
+                    genres = gs.iter()
+                        .filter_map(|g| g.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                        .collect();
+                }
+            }
+        }
+    }
+
+    Ok(DiscoverItem {
+        tmdb_id: r.id,
+        title,
+        original_title,
+        overview: r.overview.clone(),
+        poster_url,
+        year,
+        rating: r.vote_average,
+        media_type: media_type.to_string(),
+        runtime,
+        episodes,
+        genres,
+    })
 }

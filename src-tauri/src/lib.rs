@@ -1,15 +1,16 @@
 mod achievements;
 mod anilist;
+mod bangumi;
 mod commands;
 mod cover_cache;
 mod db;
 mod diary_collections;
 mod models;
+mod roulette;
 mod shikimori;
 mod sync;
 mod tmdb;
 mod tv_tracker;
-mod bangumi;
 
 use db::Database;
 use std::sync::Arc;
@@ -184,6 +185,9 @@ pub fn run() {
             sync::commands::sync_forget_peer,
             sync::commands::sync_now,
             sync::commands::sync_pair_and_sync,
+            // Рулетка
+            roulette::roll_random,
+			roulette::roll_random_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

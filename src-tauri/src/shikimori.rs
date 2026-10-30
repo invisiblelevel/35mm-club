@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 const SHIKIMORI_URL: &str = "https://shikimori.io/api/graphql";
 
@@ -105,6 +107,68 @@ pub struct ShikiAnimeDetails {
     pub genres: Vec<String>,
     pub studio: Option<String>,
     pub year: Option<i64>,
+}
+
+// ==========================================
+// IN-MEMORY ПУЛ ДЛЯ РУЛЕТКИ
+// ==========================================
+//
+// Shikimori имеет лимит 5 запросов/сек и 90/мин.
+// Рулетка может крутиться каждые 2 секунды — так мы быстро
+// упрёмся в лимит.
+//
+// Решение: один запрос на 50 аниме, складываем в пул,
+// крутим локально. Обновляем пул, когда он пуст или старше 10 минут.
+//
+struct AnimePool {
+    items: Vec<ShikiSearchItem>,
+    fetched_at: Option<Instant>,
+}
+
+static POOL: Mutex<Option<AnimePool>> = Mutex::new(None);
+
+const POOL_TTL_SECS: u64 = 600; // 10 минут
+const POOL_SIZE: i64 = 50;
+
+fn pool_fresh(pool: &AnimePool) -> bool {
+    match pool.fetched_at {
+        Some(t) => t.elapsed() < Duration::from_secs(POOL_TTL_SECS),
+        None => false,
+    }
+}
+
+/// Забирает весь пул (для отладки/рулетки).
+fn pool_take_random() -> Option<ShikiSearchItem> {
+    let guard = POOL.lock().ok()?;
+    let pool = guard.as_ref()?;
+    if pool.items.is_empty() {
+        return None;
+    }
+    let idx = (rand::random::<u32>() as usize) % pool.items.len();
+    Some(pool.items[idx].clone())
+}
+
+fn pool_replace(items: Vec<ShikiSearchItem>) {
+    if let Ok(mut guard) = POOL.lock() {
+        *guard = Some(AnimePool {
+            items,
+            fetched_at: Some(Instant::now()),
+        });
+    }
+}
+
+fn pool_len() -> usize {
+    POOL.lock()
+        .ok()
+        .and_then(|g| g.as_ref().map(|p| p.items.len()))
+        .unwrap_or(0)
+}
+
+fn pool_is_fresh() -> bool {
+    POOL.lock()
+        .ok()
+        .and_then(|g| g.as_ref().map(pool_fresh))
+        .unwrap_or(false)
 }
 
 /// Выбирает название в зависимости от локали.
@@ -240,4 +304,106 @@ pub async fn get_anime_details(mal_id: i64, locale: &str) -> Result<ShikiAnimeDe
         studio,
         year: a.aired_on.and_then(|d| d.year),
     })
+}
+
+// ==========================================
+// DISCOVER (для рулетки)
+// ==========================================
+
+/// Запрашивает пул из 50 аниме с Shikimori.
+/// Сортировка — по популярности (`order: popularity`), без поискового запроса.
+///
+/// Shikimori GraphQL: `animes(limit: 50, order: popularity, kind: tv)`.
+/// `kind: tv` отсекает OVA/фильмы — но рулетка хочет «что посмотреть»,
+/// включая и фильмы. Поэтому запрашиваем без kind, а фильтруем сами
+/// (или не фильтруем — пусть выпадает что угодно).
+async fn fetch_pool(locale: &str) -> Result<Vec<ShikiSearchItem>, String> {
+    let query = r#"
+        query ($limit: Int) {
+            animes(limit: $limit, order: popularity) {
+                id
+                russian
+                name
+                description
+                episodes
+                score
+                kind
+                airedOn { year }
+                poster { originalUrl }
+            }
+        }
+    "#;
+
+    let body = GraphQLRequest {
+        query: query.to_string(),
+        variables: serde_json::json!({ "limit": POOL_SIZE }),
+    };
+
+    let client = reqwest::Client::new();
+    let resp = client.post(SHIKIMORI_URL)
+        .header("User-Agent", "35mmClub")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Shikimori error: {}", resp.status()));
+    }
+
+    let parsed: GraphQLResponse<SearchData> = resp.json().await.map_err(|e| e.to_string())?;
+
+    let items: Vec<ShikiSearchItem> = parsed
+        .data
+        .map(|d| d.animes)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|a| {
+            let id = a.id.parse::<i64>().ok()?;
+            Some(ShikiSearchItem {
+                mal_id: id,
+                title: pick_title(&a.russian, &a.name, locale),
+                title_original: a.name,
+                description: a.description,
+                cover_url: a.poster.and_then(|p| p.original_url),
+                episodes: a.episodes,
+                average_score: a.score,
+                format: a.kind,
+                year: a.aired_on.and_then(|d| d.year),
+            })
+        })
+        .collect();
+
+    Ok(items)
+}
+
+/// Возвращает один случайный аниме-тайтл.
+///
+/// Логика:
+/// 1. Если пул свежий (моложе 10 минут) и не пуст — берём локально.
+/// 2. Иначе запрашиваем Shikimori (1 запрос на 50 аниме), складываем в пул.
+/// 3. Если пул пуст после запроса — ошибка.
+///
+/// `locale` влияет на выбор названия (ru: русское, иначе — оригинальное).
+pub async fn discover_random(locale: &str) -> Result<ShikiSearchItem, String> {
+    // 1. Если пул свежий — локальный рандом
+    if pool_is_fresh() && pool_len() > 0 {
+        if let Some(item) = pool_take_random() {
+            return Ok(item);
+        }
+    }
+
+    // 2. Иначе — обновляем пул
+    let items = fetch_pool(locale).await?;
+
+    if items.is_empty() {
+        return Err("Shikimori вернул пустой список".to_string());
+    }
+
+    // 3. Заменяем пул
+    pool_replace(items.clone());
+
+    // 4. Берём случайный из свежего пула
+    let idx = (rand::random::<u32>() as usize) % items.len();
+    Ok(items[idx].clone())
 }

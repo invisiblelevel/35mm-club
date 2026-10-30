@@ -4,6 +4,7 @@
     "tagline": "Your cinema. Your rules."
   },
   "nav": {
+	"roulette": "Roulette",
 	"stats": "Statistics",
     "dashboard": "Dashboard",
     "movies": "Movies",

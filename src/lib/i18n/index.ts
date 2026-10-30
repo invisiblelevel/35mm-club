@@ -20,35 +20,41 @@ function getInitialLocale(): Locale {
 
 register('ru', () => Promise.all([
   import('./locales/ru/common.json'),
-  import('./locales/ru/achievements.json')
-]).then(([common, ach]) => ({
+  import('./locales/ru/achievements.json'),
+  import('./locales/ru/roulette.json')
+]).then(([common, ach, roulette]) => ({
   ...common.default,
   achievements: {
     ...common.default.achievements,
     ...ach.default
-  }
+  },
+  roulette: roulette.default
 })));
 
 register('en', () => Promise.all([
   import('./locales/en/common.json'),
-  import('./locales/en/achievements.json')
-]).then(([common, ach]) => ({
+  import('./locales/en/achievements.json'),
+  import('./locales/en/roulette.json')
+]).then(([common, ach, roulette]) => ({
   ...common.default,
   achievements: {
     ...common.default.achievements,
     ...ach.default
-  }
+  },
+  roulette: roulette.default
 })));
 
 register('zh-CN', () => Promise.all([
   import('./locales/zh-CN/common.json'),
-  import('./locales/zh-CN/achievements.json')
-]).then(([common, ach]) => ({
+  import('./locales/zh-CN/achievements.json'),
+  import('./locales/zh-CN/roulette.json')
+]).then(([common, ach, roulette]) => ({
   ...common.default,
   achievements: {
     ...common.default.achievements,
     ...ach.default
-  }
+  },
+  roulette: roulette.default
 })));
 
 init({
