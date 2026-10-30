@@ -21,8 +21,7 @@
   const SECTORS = 8;
   const SECTOR_ANGLE = 360 / SECTORS;
   const SPIN_DURATION_MS = 4000;
-  
-  // УВЕЛИЧИЛИ РАЗМЕР
+
   const SIZE = 460; 
   const CENTER = SIZE / 2;
   const RADIUS = CENTER - 16;
@@ -153,18 +152,24 @@
           <path d={sectorPath(startAngle, startAngle + SECTOR_ANGLE)} fill={sectorColors[i % 2]} stroke="#0a0a0a" stroke-width="3" />
         {/each}
 
-        <!-- Постеры / Заглушки -->
+        <!-- Постеры через foreignObject (WebView2 не рендерит data: в <image>) -->
         {#each wheelItems as item, i}
           {@const pos = labelPosition(i)}
           {#if item?.poster_url}
-            <defs>
-              <clipPath id="poster-clip-{i}"><circle cx={pos.x} cy={pos.y} r="42" /></clipPath>
-            </defs>
-            <!-- Увеличили радиус картинки до 42 -->
-            <image href={item.poster_url} x={pos.x - 42} y={pos.y - 42} width="84" height="84" preserveAspectRatio="xMidYMid slice" clip-path="url(#poster-clip-{i})" opacity="0.95" />
-            <circle cx={pos.x} cy={pos.y} r="42" fill="none" stroke={accent} stroke-width="2" opacity="0.8" />
+            <foreignObject x={pos.x - 42} y={pos.y - 42} width="84" height="84">
+              <div style="width: 84px; height: 84px; border-radius: 50%; overflow: hidden; border: 2px solid {accent}; box-sizing: border-box;">
+                <img
+                  src={item.poster_url}
+                  alt={item.title}
+                  referrerpolicy="no-referrer"
+                  style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                  onerror={() => {
+                    if (wheelItems[i]) wheelItems[i] = { ...wheelItems[i], poster_url: null };
+                  }}
+                />
+              </div>
+            </foreignObject>
           {:else}
-            <!-- Стильная заглушка с иконкой -->
             <circle cx={pos.x} cy={pos.y} r="40" fill="#1f1f1f" stroke="#333" stroke-width="2" />
             <g transform="translate({pos.x - 16}, {pos.y - 16})" opacity="0.4">
               <Dices size={32} color="#666" />

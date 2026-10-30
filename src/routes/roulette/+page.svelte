@@ -6,7 +6,7 @@
   import confetti from 'canvas-confetti';
   import {
     Film, Tv, Sparkles, Dices, RotateCw, Bookmark, ExternalLink,
-    Star, Clock, ListVideo, AlertCircle
+    Star, Clock, ListVideo, AlertCircle, Check
   } from 'lucide-svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import RouletteWheel, { type WheelItem } from '$lib/components/RouletteWheel.svelte';
@@ -37,21 +37,24 @@
   let history = $state<HistoryItem[]>([]);
   let wheelRef: RouletteWheel;
 
+  let adding = $state(false);
+  let added = $state(false);
+  let addError = $state<string | null>(null);
+
   const accent = $derived(TABS.find(t => t.type === activeTab)?.accent ?? '#ff9000');
 
   function makePlaceholderItem(i: number): WheelItem {
     return { id: `placeholder-${i}`, poster_url: null, title: '' };
   }
 
-  // Кэшируем постеры (TMDB → data: URL), чтобы WebView их отрисовал
+  // Кэширование постеров через Rust (cache_cover), чтобы WebView не таймаутил
   async function cachePoster(url: string | null): Promise<string | null> {
     if (!url) return null;
     if (url.startsWith('data:')) return url;
     try {
       return await invoke<string>('cache_cover', { url });
     } catch (e) {
-      // если не удалось — возвращаем оригинал (может сработать, а может нет)
-      return url;
+      return null; // если не удалось — заглушка
     }
   }
 
@@ -79,6 +82,7 @@
     if (spinning || loading) return;
     if (safetyTimer) clearTimeout(safetyTimer);
     error = null; loading = true; spinning = true;
+    added = false; addError = null;
 
     try {
       const res = await invoke<RollResult[]>('roll_random_batch', { mediaType: activeTab, locale: $locale, userApiKey: null });
@@ -87,7 +91,6 @@
         throw new Error("Не удалось загрузить тайтлы. Попробуйте ещё раз.");
       }
 
-      // КЭШИРУЕМ ВСЕ 8 ПОСТЕРОВ ПЕРЕД ЗАПУСКОМ КОЛЕСА
       const cachedUrls = await preloadPosters(res);
 
       wheelItems = Array.from({ length: SECTORS }, (_, i) => {
@@ -131,6 +134,7 @@
     triggerConfetti();
     try { new Audio('/achivka.wav').play().catch(() => {}); } catch {}
     pendingResult = null;
+    added = false; addError = null;
   }
 
   function switchTab(type: MediaType) {
@@ -138,6 +142,7 @@
     activeTab = type; result = null; error = null;
     wheelItems = Array.from({ length: SECTORS }, (_, i) => makePlaceholderItem(i));
     winnerIndex = 0; wheelRef?.resetRotation();
+    added = false; addError = null;
   }
 
   function openCard(item: RollResult) {
@@ -145,15 +150,69 @@
     else if (item.tmdb_id) goto(`/title/${item.tmdb_id}?type=${item.media_type}`);
   }
 
+  // Очистка poster_path: data: URL и пустые строки заменяем на null
+  function cleanPosterPath(url: string | null): string | null {
+    if (!url) return null;
+    if (url.startsWith('data:')) return null;
+    if (!url.startsWith('http')) return null;
+    return url;
+  }
+
   async function addToLibrary(item: RollResult, status: 'planned' | 'watching') {
+    if (adding) return;
+    adding = true;
+    addError = null;
+
     try {
       if (item.media_type === 'anime' && item.mal_id) {
-        await invoke('add_anime_to_library', { payload: { mal_id: item.mal_id, title: item.title, title_original: item.original_title, description: item.overview, cover_url: item.poster_url, episodes: item.episodes, format: item.format, status, studio: null, year: item.year } });
+        await invoke('add_anime_to_library', {
+          payload: {
+            mal_id: item.mal_id,
+            title: item.title,
+            title_original: item.original_title,
+            description: item.overview,
+            cover_url: cleanPosterPath(item.poster_url),
+            episodes: item.episodes,
+            format: item.format,
+            status,
+            studio: null,
+            year: item.year
+          }
+        });
       } else if (item.tmdb_id) {
-        await invoke('add_to_library', { payload: { tmdb_id: item.tmdb_id, type_field: item.media_type, title: item.title, original_title: item.original_title, year: item.year, poster_path: item.poster_url, overview: item.overview, imdb_rating: item.rating, runtime: item.runtime, status, cast_ids: null, director_ids: null, producer_ids: null, production_company_ids: null, keyword_ids: null, collection_id: null, locale: $locale } });
+        await invoke('add_to_library', {
+          payload: {
+            tmdb_id: item.tmdb_id,
+            type: item.media_type, // <-- ИСПРАВЛЕНО: type вместо type_field
+            title: item.title,
+            original_title: item.original_title,
+            year: item.year,
+            poster_path: cleanPosterPath(item.poster_url),
+            overview: item.overview,
+            imdb_rating: item.rating,
+            runtime: item.runtime,
+            status,
+            cast_ids: null,
+            director_ids: null,
+            producer_ids: null,
+            production_company_ids: null,
+            keyword_ids: null,
+            collection_id: null,
+            locale: $locale
+          }
+        });
+      } else {
+        throw new Error("Нет ID для добавления (ни tmdb_id, ни mal_id)");
       }
+
+      added = true;
       window.dispatchEvent(new CustomEvent('35mm-data-changed'));
-    } catch (e) { console.error('add_to_library failed:', e); }
+    } catch (e) {
+      addError = String(e);
+      console.error('add_to_library failed:', e);
+    } finally {
+      adding = false;
+    }
   }
 
   function formatRating(r: number | null): string { return r == null ? '—' : r.toFixed(1); }
@@ -227,13 +286,26 @@
           </div>
           {#if result.genres.length > 0}<div class="flex flex-wrap gap-1.5 mt-2">{#each result.genres.slice(0, 5) as g}<span class="text-[11px] px-2 py-0.5 rounded-full bg-ink-light text-zinc-400 border border-border">{g}</span>{/each}</div>{/if}
           {#if result.overview}<p class="text-sm text-zinc-400 mt-3 line-clamp-3">{result.overview}</p>{/if}
+          
           <div class="flex flex-wrap gap-2 mt-auto pt-3">
-            <button onclick={() => result && addToLibrary(result, 'planned')} class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold/50 hover:text-gold transition-colors"><Bookmark size={16} />{$t('roulette.add_planned')}</button>
-            <button onclick={() => result && addToLibrary(result, 'watching')} class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold/50 hover:text-gold transition-colors"><Tv size={16} />{$t('roulette.add_watching')}</button>
+            {#if added}
+              <div class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-sm text-green-400">
+                <Check size={16} /> {$t('roulette.added')}
+              </div>
+            {:else}
+              <button onclick={() => result && addToLibrary(result, 'planned')} disabled={adding} class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold/50 hover:text-gold transition-colors disabled:opacity-50"><Bookmark size={16} /> {$t('roulette.add_planned')}</button>
+              <button onclick={() => result && addToLibrary(result, 'watching')} disabled={adding} class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink-light border border-border text-sm text-zinc-300 hover:border-gold/50 hover:text-gold transition-colors disabled:opacity-50"><Tv size={16} /> {$t('roulette.add_watching')}</button>
+            {/if}
             {#if result.media_type !== 'anime' || result.mal_id}
-              <button onclick={() => result && openCard(result)} class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:brightness-110 text-ink" style="background: linear-gradient(180deg, {accent}, color-mix(in srgb, {accent} 70%, #000));"><ExternalLink size={16} />{$t('roulette.open_card')}</button>
+              <button onclick={() => result && openCard(result)} class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:brightness-110 text-ink" style="background: linear-gradient(180deg, {accent}, color-mix(in srgb, {accent} 70%, #000));"><ExternalLink size={16} /> {$t('roulette.open_card')}</button>
             {/if}
           </div>
+          {#if addError}
+            <div class="mt-2 flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+              <AlertCircle size={14} class="shrink-0 mt-0.5" />
+              <div class="flex-1 min-w-0 break-words">{addError}</div>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -244,7 +316,7 @@
       <h3 class="text-sm font-medium text-zinc-500 mb-2">{$t('roulette.history_title')}</h3>
       <div class="flex gap-2 overflow-x-auto pb-2">
         {#each history as h (h.ts)}
-          <button onclick={() => { result = h; triggerConfetti(); }} class="shrink-0 w-20 group" title={h.title}>
+          <button onclick={() => { result = h; triggerConfetti(); added = false; addError = null; }} class="shrink-0 w-20 group" title={h.title}>
             <div class="aspect-[2/3] rounded-lg overflow-hidden bg-ink-light border border-border group-hover:border-gold/50 transition-colors relative">
               {#if h.poster_url}<img src={h.poster_url} alt={h.title} class="absolute inset-0 w-full h-full object-cover" referrerpolicy="no-referrer" />{:else}<div class="absolute inset-0 flex items-center justify-center text-zinc-600"><Dices size={24} /></div>{/if}
             </div>
