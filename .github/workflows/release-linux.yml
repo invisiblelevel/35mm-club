@@ -48,25 +48,30 @@ jobs:
         run: npm run tauri build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}  # <-- КЛЮЧ ПОДСТАВЛЯЕТСЯ ЗДЕСЬ
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
-      - name: Create Draft Release and Upload Linux Artifacts
-        uses: tauri-apps/tauri-action@v0
+      # Шаг 1: Создаём черновик релиза (если его ещё нет) и запоминаем его ID
+      - name: Create or Get Draft Release
+        id: release
+        run: |
+          # Проверяем, существует ли уже релиз для этого тега
+          RELEASE_ID=$(gh release view ${{ github.ref_name }} --json id -q .id 2>/dev/null || true)
+          if [ -z "$RELEASE_ID" ]; then
+            # Если нет, создаём черновик
+            gh release create ${{ github.ref_name }} \
+              --title "35mm Club ${{ github.ref_name }}" \
+              --notes "Linux build for 35mm Club ${{ github.ref_name }}." \
+              --draft
+            RELEASE_ID=$(gh release view ${{ github.ref_name }} --json id -q .id)
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: '35mm Club ${{ github.ref_name }}'
-          releaseBody: |
-            **35mm Club ${{ github.ref_name }}**
 
-            - Roulette wheel for picking what to watch.
-            - Secure API keys (loaded from `.env` at build time).
-            - Bangumi support for Chinese locale.
-
-            **Downloads:**
-            - Windows: `.exe` (NSIS installer) — *attach manually*
-            - Android: `.apk` (Universal) — *attach manually*
-            - Linux: `.deb`, `.rpm`, `.AppImage` — *auto-built*
-          releaseDraft: true
-          prerelease: false
+      # Шаг 2: Явно загружаем все нужные файлы в релиз
+      - name: Upload Linux Artifacts to Release
+        run: |
+          # Ищем все .deb, .rpm и .AppImage в папке bundle
+          find src-tauri/target/release/bundle -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) -exec gh release upload ${{ github.ref_name }} {} \;
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
